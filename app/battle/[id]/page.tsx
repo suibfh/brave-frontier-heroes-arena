@@ -81,22 +81,27 @@ export default function BattlePage() {
 
   useEffect(() => {
     if (!unitListData?.units?.length) return;
+    const BATCH = 5; // 同時リクエスト数を制限
     const fetchAll = async () => {
-      const entries = await Promise.all(
-        (unitListData.units ?? []).map(async (heroId) => {
-          try {
-            const res = await fetch(`/api/hero/metadata/${heroId}`);
-            if (!res.ok) return null;
-            const data: HeroMetadata = await res.json();
-            return [String(heroId), data] as const;
-          } catch {
-            return null;
-          }
-        })
-      );
+      const units = unitListData.units ?? [];
       const map: Record<string, HeroMetadata> = {};
-      entries.forEach((e) => { if (e) map[e[0]] = e[1]; });
-      setHeroMetaMap(map);
+      for (let i = 0; i < units.length; i += BATCH) {
+        const batch = units.slice(i, i + BATCH);
+        const entries = await Promise.all(
+          batch.map(async (heroId) => {
+            try {
+              const res = await fetch(`/api/hero/metadata/${heroId}`);
+              if (!res.ok) return null;
+              const data: HeroMetadata = await res.json();
+              return [String(heroId), data] as const;
+            } catch {
+              return null;
+            }
+          })
+        );
+        entries.forEach((e) => { if (e) map[e[0]] = e[1]; });
+        setHeroMetaMap({ ...map }); // バッチごとに逐次表示
+      }
     };
     fetchAll();
   }, [unitListData?.units]);
@@ -106,22 +111,27 @@ export default function BattlePage() {
 
   useEffect(() => {
     if (!sphereListData?.spheres?.length) return;
+    const BATCH = 5;
     const fetchAll = async () => {
-      const entries = await Promise.all(
-        (sphereListData.spheres ?? []).map(async (sphereId) => {
-          try {
-            const res = await fetch(`/api/sphere/metadata/${sphereId}`);
-            if (!res.ok) return null;
-            const data: SphereMetadata = await res.json();
-            return [String(sphereId), data] as const;
-          } catch {
-            return null;
-          }
-        })
-      );
+      const spheres = sphereListData.spheres ?? [];
       const map: Record<string, SphereMetadata> = {};
-      entries.forEach((e) => { if (e) map[e[0]] = e[1]; });
-      setSphereMetaMap(map);
+      for (let i = 0; i < spheres.length; i += BATCH) {
+        const batch = spheres.slice(i, i + BATCH);
+        const entries = await Promise.all(
+          batch.map(async (sphereId) => {
+            try {
+              const res = await fetch(`/api/sphere/metadata/${sphereId}`);
+              if (!res.ok) return null;
+              const data: SphereMetadata = await res.json();
+              return [String(sphereId), data] as const;
+            } catch {
+              return null;
+            }
+          })
+        );
+        entries.forEach((e) => { if (e) map[e[0]] = e[1]; });
+        setSphereMetaMap({ ...map });
+      }
     };
     fetchAll();
   }, [sphereListData?.spheres]);
@@ -142,6 +152,8 @@ export default function BattlePage() {
     mutation: {
       onSuccess: (data) => {
         const res = data as any;
+        // デバッグ: レスポンス構造を確認（修正後に削除）
+        console.log('[Battle Result Raw]', JSON.stringify(res));
         setBattleResult({
           result: res?.result ?? 2,
           battle_key: res?.battle_key ?? '',
