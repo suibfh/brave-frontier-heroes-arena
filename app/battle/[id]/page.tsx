@@ -18,7 +18,9 @@ interface HeroMetadata {
   image: string;
   attributes: {
     type_name: string;
-    rarity: string;
+    rarity: string;       // 実際の文字列値はデバッグログで確認
+    element?: string;     // 属性（文字列の場合）
+    attribute?: string;   // 属性（別フィールド名の場合）
     lv: number;
     hp: number;
     phy: number;
@@ -64,20 +66,38 @@ type BattleResult = {
 };
 
 // ============================================================
-// グローバルキャッシュ（再ロード防止）
+// グローバルキャッシュ（再ロード防止・重複fetch防止）
 // ============================================================
 const heroCache: Record<string, HeroMetadata> = {};
 const sphereCache: Record<string, SphereMetadata> = {};
+const heroFetching = new Set<string>();
+const sphereFetching = new Set<string>();
+
+function fetchHeroMeta(heroId: string, onDone: (d: HeroMetadata) => void) {
+  if (heroCache[heroId]) { onDone(heroCache[heroId]); return; }
+  if (heroFetching.has(heroId)) return;
+  heroFetching.add(heroId);
+  fetch(`/api/hero/metadata/${heroId}`)
+    .then((r) => r.ok ? r.json() : null)
+    .then((d) => { if (d) { heroCache[heroId] = d; onDone(d); } })
+    .catch(() => {})
+    .finally(() => heroFetching.delete(heroId));
+}
+
+function fetchSphereMeta(sphereId: string, onDone: (d: SphereMetadata) => void) {
+  if (sphereCache[sphereId]) { onDone(sphereCache[sphereId]); return; }
+  if (sphereFetching.has(sphereId)) return;
+  sphereFetching.add(sphereId);
+  fetch(`/api/sphere/metadata/${sphereId}`)
+    .then((r) => r.ok ? r.json() : null)
+    .then((d) => { if (d) { sphereCache[sphereId] = d; onDone(d); } })
+    .catch(() => {})
+    .finally(() => sphereFetching.delete(sphereId));
+}
 
 function useHeroMeta(heroId: string) {
   const [meta, setMeta] = useState<HeroMetadata | null>(heroCache[heroId] ?? null);
-  useEffect(() => {
-    if (heroCache[heroId]) { setMeta(heroCache[heroId]); return; }
-    fetch(`/api/hero/metadata/${heroId}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d) { heroCache[heroId] = d; setMeta(d); } })
-      .catch(() => {});
-  }, [heroId]);
+  useEffect(() => { fetchHeroMeta(heroId, setMeta); }, [heroId]);
   return meta;
 }
 
@@ -85,11 +105,7 @@ function useSphereMeta(sphereId: string | null) {
   const [meta, setMeta] = useState<SphereMetadata | null>(sphereId ? (sphereCache[sphereId] ?? null) : null);
   useEffect(() => {
     if (!sphereId) { setMeta(null); return; }
-    if (sphereCache[sphereId]) { setMeta(sphereCache[sphereId]); return; }
-    fetch(`/api/sphere/metadata/${sphereId}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d) { sphereCache[sphereId] = d; setMeta(d); } })
-      .catch(() => {});
+    fetchSphereMeta(sphereId, setMeta);
   }, [sphereId]);
   return meta;
 }
@@ -126,6 +142,10 @@ function HeroDetailModal({ heroId, onClose }: { heroId: string; onClose: () => v
               <div>
                 <p className="font-black text-sm uppercase">{meta.attributes.type_name}</p>
                 <p className="text-xs text-neutral-400 font-mono">Lv {meta.attributes.lv}</p>
+                {/* デバッグ: 実際のrarity/element値確認用（確認後に削除） */}
+                <p className="text-[9px] text-orange-400 font-mono">
+                  rarity="{meta.attributes.rarity}" element="{meta.attributes.element ?? meta.attributes.attribute ?? '?'}"
+                </p>
               </div>
               <div className="grid grid-cols-3 gap-1 text-[10px] font-mono">
                 {([['HP', meta.attributes.hp], ['PHY', meta.attributes.phy], ['INT', meta.attributes.int],
@@ -340,14 +360,19 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
             <div key={slotIdx} className="flex items-center gap-1 flex-1">
               <button
                 onClick={() => onSphereClick(slotIdx)}
-                className={`flex-1 text-[10px] font-bold px-1.5 py-1 border rounded transition-colors truncate text-left ${
+                className={`flex-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 border rounded transition-colors text-left min-w-0 ${
                   sId ? 'border-blue-400 text-blue-700 bg-blue-50 hover:bg-blue-100'
                       : 'border-dashed border-neutral-300 text-neutral-400 hover:border-blue-400'
                 }`}
               >
-                {sMeta?.attributes?.type_name ?? (sId ? `#${sId}` : `＋ S${slotIdx + 1}`)}
+                {sMeta?.image && (
+                  <img src={sMeta.image} alt="" className="w-5 h-5 object-contain flex-shrink-0 rounded" />
+                )}
+                <span className="truncate">
+                  {sMeta?.attributes?.type_name ?? (sId ? `#${sId}` : `＋ S${slotIdx + 1}`)}
+                </span>
               </button>
-              {sId && <button onClick={() => onSphereRemove(slotIdx)} className="text-neutral-300 hover:text-red-500 text-xs leading-none">×</button>}
+              {sId && <button onClick={() => onSphereRemove(slotIdx)} className="text-neutral-300 hover:text-red-500 text-xs leading-none flex-shrink-0">×</button>}
             </div>
           );
         })}
@@ -396,6 +421,24 @@ export default function BattlePage() {
   const [sphereSearch, setSphereSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'party' | 'units' | 'spheres'>('units');
 
+  // フィルター状態
+  const [unitRarityFilter, setUnitRarityFilter] = useState<string | null>(null);
+  const [unitAttrFilter, setUnitAttrFilter] = useState<string | null>(null);
+  const [sphereRarityFilter, setSphereRarityFilter] = useState<string | null>(null);
+
+  // ユニットレアリティ（NFTメタデータのrarity文字列、実際の値確認後に調整）
+  const UNIT_RARITIES = ['LL', 'L', 'E', 'R', 'U'] as const;
+  // ユニット属性（NFTメタデータの実際のフィールド名・値は確認後に調整）
+  const UNIT_ATTRS = [
+    { label: '炎', value: 'fire' },
+    { label: '水', value: 'water' },
+    { label: '樹', value: 'earth' },
+    { label: '雷', value: 'thunder' },
+    { label: '光', value: 'light' },
+    { label: '闇', value: 'dark' },
+  ] as const;
+  const SPHERE_RARITIES = ['L', 'E', 'R', 'U', 'C'] as const;
+
   const [selectedUnits, setSelectedUnits] = useState<SelectedUnit[]>([]);
   const maxUnits = 5;
 
@@ -417,15 +460,35 @@ export default function BattlePage() {
   }, [unitMetaSnapshot, sphereMetaSnapshot]);
 
   const filteredUnits = (unitListData?.units ?? []).filter((id) => {
-    if (!unitSearch) return true;
-    const q = unitSearch.toLowerCase();
-    return (unitMetaSnapshot[id]?.attributes?.type_name ?? '').toLowerCase().includes(q) || id.includes(q);
+    const meta = unitMetaSnapshot[id];
+    if (unitSearch) {
+      const q = unitSearch.toLowerCase();
+      if (!(meta?.attributes?.type_name ?? '').toLowerCase().includes(q) && !id.includes(q)) return false;
+    }
+    if (unitRarityFilter) {
+      const r = (meta?.attributes?.rarity ?? '').toLowerCase();
+      // 実際のrarity文字列が確認できたらここを調整
+      // デバッグ: コンソールに実際値が出るのでそれで確認
+      if (!r.includes(unitRarityFilter.toLowerCase())) return false;
+    }
+    if (unitAttrFilter) {
+      const el = (meta?.attributes?.element ?? meta?.attributes?.attribute ?? '').toLowerCase();
+      if (!el.includes(unitAttrFilter.toLowerCase())) return false;
+    }
+    return true;
   });
 
   const filteredSpheres = (sphereListData?.spheres ?? []).filter((id) => {
-    if (!sphereSearch) return true;
-    const q = sphereSearch.toLowerCase();
-    return (sphereMetaSnapshot[id]?.attributes?.type_name ?? '').toLowerCase().includes(q) || id.includes(q);
+    const meta = sphereMetaSnapshot[id];
+    if (sphereSearch) {
+      const q = sphereSearch.toLowerCase();
+      if (!(meta?.attributes?.type_name ?? '').toLowerCase().includes(q) && !id.includes(q)) return false;
+    }
+    if (sphereRarityFilter) {
+      const r = (meta?.attributes?.rarity ?? '').toLowerCase();
+      if (!r.includes(sphereRarityFilter.toLowerCase())) return false;
+    }
+    return true;
   });
 
   const { mutate: simulateBattle, isPending: isBattling } = usePostV1BattleSimulate({
@@ -683,11 +746,34 @@ export default function BattlePage() {
         {/* ユニット一覧 */}
         <div className={`lg:flex lg:flex-col lg:border-r-2 border-neutral-200 lg:overflow-y-auto ${activeTab !== 'units' ? 'hidden lg:flex' : ''}`}>
           <div className="p-3 space-y-2">
+            {/* 検索 */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input type="text" placeholder="ユニット検索..." value={unitSearch} onChange={(e) => setUnitSearch(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:border-red-400 bg-white" />
               {unitSearch && <button onClick={() => setUnitSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="w-3 h-3 text-neutral-400" /></button>}
+            </div>
+            {/* レアリティフィルター */}
+            <div className="flex gap-1 flex-wrap">
+              {UNIT_RARITIES.map((r) => (
+                <button key={r} onClick={() => setUnitRarityFilter(unitRarityFilter === r ? null : r)}
+                  className={`text-[10px] font-black px-2 py-0.5 rounded border transition-colors ${
+                    unitRarityFilter === r ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
+                  }`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            {/* 属性フィルター（画像は後で差し替え、今はテキスト） */}
+            <div className="flex gap-1 flex-wrap">
+              {UNIT_ATTRS.map((a) => (
+                <button key={a.value} onClick={() => setUnitAttrFilter(unitAttrFilter === a.value ? null : a.value)}
+                  className={`text-[10px] font-black px-2 py-0.5 rounded border transition-colors ${
+                    unitAttrFilter === a.value ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
+                  }`}>
+                  {a.label}
+                </button>
+              ))}
             </div>
             <p className="text-[10px] text-neutral-400 font-mono">{filteredUnits.length}体</p>
             {isLoadingUnits ? (
@@ -710,11 +796,23 @@ export default function BattlePage() {
         {/* スフィア一覧 */}
         <div className={`lg:flex lg:flex-col lg:overflow-y-auto ${activeTab !== 'spheres' ? 'hidden lg:flex' : ''}`}>
           <div className="p-3 space-y-2">
+            {/* 検索 */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input type="text" placeholder="スフィア検索..." value={sphereSearch} onChange={(e) => setSphereSearch(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:border-blue-400 bg-white" />
               {sphereSearch && <button onClick={() => setSphereSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="w-3 h-3 text-neutral-400" /></button>}
+            </div>
+            {/* レアリティフィルター */}
+            <div className="flex gap-1 flex-wrap">
+              {SPHERE_RARITIES.map((r) => (
+                <button key={r} onClick={() => setSphereRarityFilter(sphereRarityFilter === r ? null : r)}
+                  className={`text-[10px] font-black px-2 py-0.5 rounded border transition-colors ${
+                    sphereRarityFilter === r ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
+                  }`}>
+                  {r}
+                </button>
+              ))}
             </div>
             <p className="text-[10px] text-neutral-400 font-mono">{filteredSpheres.length}個 — パーティタブのスロットから装備</p>
             {isLoadingSpheres ? (
