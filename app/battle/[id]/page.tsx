@@ -598,6 +598,25 @@ export default function BattlePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitListData?.units, sphereListData?.spheres]);
 
+  // スフィアメタをバックグラウンドでプリフェッチ（検索のため）
+  // 同時5件ずつキューで処理してリソース制限を回避
+  useEffect(() => {
+    const spheres = sphereListData?.spheres ?? [];
+    if (spheres.length === 0) return;
+    let idx = 0;
+    const CONCURRENCY = 5;
+    let active = 0;
+    function next() {
+      while (active < CONCURRENCY && idx < spheres.length) {
+        const id = spheres[idx++];
+        if (sphereMetaCache[id]) { next(); return; }
+        active++;
+        fetchSphereMeta(id, () => { active--; next(); });
+      }
+    }
+    next();
+  }, [sphereListData?.spheres]);
+
   // UI状態
   const [unitSearch,    setUnitSearch]    = useState('');
   const [sphereSearch,  setSphereSearch]  = useState('');
@@ -607,9 +626,13 @@ export default function BattlePage() {
   const [sphereRarity,  setSphereRarity]  = useState<string | null>(null);
 
   // パーティ状態
-  const [selectedUnits, setSelectedUnits] = useState<SelectedUnit[]>([]);
+  // 5スロット固定配列（null=空き）でスロット位置を管理
   const maxUnits = 5;
+  const [partySlots, setPartySlots] = useState<(SelectedUnit | null)[]>(Array(maxUnits).fill(null));
+  // 後方互換用: null除いたリスト（バトル送信時など）
+  const selectedUnits = partySlots.filter((u): u is SelectedUnit => u !== null);
   const [spherePickTarget, setSpherePickTarget] = useState<{ unitIdx: number; slotIdx: number } | null>(null);
+  const [unitPickSlot, setUnitPickSlot] = useState<number | null>(null); // 空スロットタップ時の対象スロット番号
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderFirstIdx, setReorderFirstIdx] = useState<number | null>(null);
 
@@ -686,57 +709,88 @@ export default function BattlePage() {
   }
 
   // アクション
-  const toggleUnit = (heroId: string) => {
-    setSelectedUnits(prev => {
-      if (prev.find(u => u.heroId === heroId)) return prev.filter(u => u.heroId !== heroId);
-      if (prev.length >= maxUnits) return prev;
-      return [...prev, { heroId, sphereIds: [null, null], skillOrders: [0, 1, 2] }];
+  // スロット指定でユニットをセット（unitPickSlot指定時）or 末尾の空きスロットへ
+  const assignUnitToSlot = (heroId: string, targetSlot?: number) => {
+    setPartySlots(prev => {
+      const next = [...prev];
+      // すでにどこかにいたら外す
+      const existingIdx = next.findIndex(u => u?.heroId === heroId);
+      if (existingIdx !== -1) {
+        next[existingIdx] = null;
+        return next;
+      }
+      // 入れ先を決定
+      const slot = targetSlot ?? next.findIndex(u => u === null);
+      if (slot === -1 || slot >= maxUnits) return prev;
+      next[slot] = { heroId, sphereIds: [null, null], skillOrders: [0, 1, 2] };
+      return next;
     });
+    setUnitPickSlot(null);
+  };
+
+  const removeUnitFromSlot = (slotIdx: number) => {
+    setPartySlots(prev => { const next = [...prev]; next[slotIdx] = null; return next; });
+  };
+
+  // 後方互換（ユニット一覧のカードから直接タップ時）
+  const toggleUnit = (heroId: string) => {
+    const inParty = partySlots.some(u => u?.heroId === heroId);
+    if (inParty) {
+      setPartySlots(prev => prev.map(u => u?.heroId === heroId ? null : u));
+    } else {
+      assignUnitToSlot(heroId, unitPickSlot ?? undefined);
+    }
   };
 
   const assignSphere = (sphereId: string) => {
     if (!spherePickTarget) return;
-    const { unitIdx, slotIdx } = spherePickTarget;
-    setSelectedUnits(prev => {
+    const { unitIdx: partySlotIdx, slotIdx } = spherePickTarget;
+    setPartySlots(prev => {
       const next = [...prev];
-      const unit = { ...next[unitIdx], sphereIds: [...next[unitIdx].sphereIds] };
-      unit.sphereIds[slotIdx] = sphereId;
-      next[unitIdx] = unit;
+      const unit = next[partySlotIdx];
+      if (!unit) return prev;
+      const updated = { ...unit, sphereIds: [...unit.sphereIds] };
+      updated.sphereIds[slotIdx] = sphereId;
+      next[partySlotIdx] = updated;
       return next;
     });
     setSpherePickTarget(null);
     setActiveTab('party');
   };
 
-  const removeSphere = (unitIdx: number, slotIdx: number) => {
-    setSelectedUnits(prev => {
+  const removeSphere = (partySlotIdx: number, slotIdx: number) => {
+    setPartySlots(prev => {
       const next = [...prev];
-      const unit = { ...next[unitIdx], sphereIds: [...next[unitIdx].sphereIds] };
-      unit.sphereIds[slotIdx] = null;
-      next[unitIdx] = unit;
+      const unit = next[partySlotIdx];
+      if (!unit) return prev;
+      const updated = { ...unit, sphereIds: [...unit.sphereIds] };
+      updated.sphereIds[slotIdx] = null;
+      next[partySlotIdx] = updated;
       return next;
     });
   };
 
-  const handleReorderTap = (unitIdx: number) => {
+  const handleReorderTap = (partySlotIdx: number) => {
     if (reorderFirstIdx === null) {
-      setReorderFirstIdx(unitIdx);
+      setReorderFirstIdx(partySlotIdx);
+    } else if (reorderFirstIdx === partySlotIdx) {
+      setReorderFirstIdx(null);
     } else {
-      if (reorderFirstIdx !== unitIdx) {
-        setSelectedUnits(prev => {
-          const next = [...prev];
-          [next[reorderFirstIdx], next[unitIdx]] = [next[unitIdx], next[reorderFirstIdx]];
-          return next;
-        });
-      }
+      setPartySlots(prev => {
+        const next = [...prev];
+        [next[reorderFirstIdx], next[partySlotIdx]] = [next[partySlotIdx], next[reorderFirstIdx]];
+        return next;
+      });
       setReorderFirstIdx(null);
     }
   };
 
-  const updateSkillOrders = (unitIdx: number, newOrders: [number, number, number]) => {
-    setSelectedUnits(prev => {
+  const updateSkillOrders = (partySlotIdx: number, newOrders: [number, number, number]) => {
+    setPartySlots(prev => {
       const next = [...prev];
-      next[unitIdx] = { ...next[unitIdx], skillOrders: newOrders };
+      const unit = next[partySlotIdx];
+      if (!unit) return prev;
+      next[partySlotIdx] = { ...unit, skillOrders: newOrders };
       return next;
     });
   };
@@ -903,7 +957,7 @@ export default function BattlePage() {
           <div className="p-3 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">パーティ ({selectedUnits.length}/{maxUnits})</p>
-              {selectedUnits.length >= 2 && (
+              {selectedUnits.length >= 2 && !unitPickSlot && (
                 <button
                   onClick={() => { setReorderMode(r => !r); setReorderFirstIdx(null); }}
                   className={`text-[10px] font-black px-2.5 py-1 rounded-lg border transition-all ${
@@ -916,22 +970,37 @@ export default function BattlePage() {
                 </button>
               )}
             </div>
-            {selectedUnits.length === 0 ? (
-              <p className="text-neutral-400 font-mono text-xs py-6 text-center border border-dashed border-neutral-200 rounded-lg">ユニットを選んでください</p>
-            ) : (
-              <div className="space-y-2">
-                {selectedUnits.map((u, unitIdx) => (
-                  <SelectedUnitRow key={u.heroId} unit={u}
-                    onSphereClick={slotIdx => { if (!reorderMode) setSpherePickTarget({ unitIdx, slotIdx }); }}
-                    onSphereRemove={slotIdx => { if (!reorderMode) removeSphere(unitIdx, slotIdx); }}
-                    onRemove={() => { if (!reorderMode) toggleUnit(u.heroId); }}
-                    onSkillOrderChange={orders => updateSkillOrders(unitIdx, orders)}
-                    reorderMode={reorderMode}
-                    isReorderSelected={reorderFirstIdx === unitIdx}
-                    onReorderTap={() => handleReorderTap(unitIdx)} />
-                ))}
+            <div className="space-y-2">
+                {partySlots.map((u, slotIdx) => {
+                  if (u) {
+                    return (
+                      <SelectedUnitRow key={u.heroId} unit={u}
+                        onSphereClick={si => { if (!reorderMode) setSpherePickTarget({ unitIdx: slotIdx, slotIdx: si }); }}
+                        onSphereRemove={si => { if (!reorderMode) removeSphere(slotIdx, si); }}
+                        onRemove={() => { if (!reorderMode) removeUnitFromSlot(slotIdx); }}
+                        onSkillOrderChange={orders => updateSkillOrders(slotIdx, orders)}
+                        reorderMode={reorderMode}
+                        isReorderSelected={reorderFirstIdx === slotIdx}
+                        onReorderTap={() => handleReorderTap(slotIdx)} />
+                    );
+                  }
+                  return (
+                    <button
+                      key={`empty-${slotIdx}`}
+                      onClick={() => { if (!reorderMode) { setUnitPickSlot(slotIdx); setActiveTab('units'); } }}
+                      className="w-full border-2 border-dashed border-neutral-300 rounded-lg py-3 flex items-center gap-3 px-3 hover:border-red-400 hover:bg-red-50 transition-colors group"
+                    >
+                      <div className="w-9 h-9 rounded-full border-2 border-dashed border-neutral-300 flex items-center justify-center group-hover:border-red-400 flex-shrink-0">
+                        <span className="text-neutral-400 text-lg font-black group-hover:text-red-500">＋</span>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-black text-neutral-400 uppercase">位置 {slotIdx + 1}</p>
+                        <p className="text-[10px] text-neutral-300 font-mono">タップしてユニット選択</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            )}
           </div>
         </div>
 
@@ -961,6 +1030,14 @@ export default function BattlePage() {
                 );
               })}
             </div>
+            {unitPickSlot !== null && (
+              <div className="bg-red-50 border border-red-300 rounded-lg px-3 py-1.5 flex items-center justify-between">
+                <p className="text-xs font-black text-red-700">位置 {unitPickSlot + 1} にセット</p>
+                <button onClick={() => setUnitPickSlot(null)} className="text-red-400 hover:text-red-600">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
             <p className="text-[10px] text-neutral-400 font-mono">{filteredUnits.length}体</p>
             {isLoadingUnits ? (
               <div className="grid grid-cols-3 gap-2">{Array.from({length:9}).map((_,i)=><div key={i} className="aspect-square bg-neutral-100 rounded animate-pulse"/>)}</div>
@@ -972,7 +1049,14 @@ export default function BattlePage() {
                   return (
                     <UnitMiniCard key={heroId} heroId={heroId} isSelected={isSelected} isDisabled={isDisabled}
                       gameData={heroGameMap[heroId]}
-                      onClick={() => { toggleUnit(heroId); if (!isSelected) setActiveTab('party'); }} />
+                      onClick={() => {
+                        if (isSelected) {
+                          toggleUnit(heroId);
+                        } else {
+                          assignUnitToSlot(heroId, unitPickSlot ?? undefined);
+                          setActiveTab('party');
+                        }
+                      }} />
                   );
                 })}
               </div>
