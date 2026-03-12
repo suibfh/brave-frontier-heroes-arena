@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Card, CardContent } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
@@ -18,16 +18,9 @@ interface HeroMetadata {
   image: string;
   attributes: {
     type_name: string;
-    rarity: string;       // 実際の文字列値はデバッグログで確認
-    element?: string;     // 属性（文字列の場合）
-    attribute?: string;   // 属性（別フィールド名の場合）
+    rarity: string;   // "Legendary" / "Epic" / "Rare" / "Uncommon"
     lv: number;
-    hp: number;
-    phy: number;
-    int: number;
-    agi: number;
-    spr: number;
-    def: number;
+    hp: number; phy: number; int: number; agi: number; spr: number; def: number;
     brave_burst?: string;
     art_skill?: string;
   };
@@ -40,19 +33,36 @@ interface SphereMetadata {
     type_name: string;
     rarity: string;
     lv: number;
-    hp: number;
-    phy: number;
-    int: number;
-    agi: number;
-    spr: number;
-    def: number;
+    hp: number; phy: number; int: number; agi: number; spr: number; def: number;
+    sphere_skill?: string;
     ability_name?: string;
   };
 }
 
+// /v1/heroes のゲームデータ（attribute はここだけにある）
+interface HeroGameData {
+  hero_id: number;
+  rarity: number;    // 5=L(LL), 4=L?, 3=E?, 2=R, 1=U — NFTのrarity文字列と照合して確定
+  attribute: number; // 1=炎, 2=水, 3=樹, 4=雷, 5=光, 6=闇
+  name: string;
+  name_jp: string;
+  lv: number;
+  param: { hp: number; phy: number; int: number; vit: number; mnd: number; agi: number };
+}
+
+// /v1/spheres のゲームデータ
+interface SphereGameData {
+  extension_id: number;
+  rarity: number;
+  name: string;
+  name_jp: string;
+  lv: number;
+  param: { hp: number; phy: number; int: number; vit: number; mnd: number; agi: number };
+}
+
 type SelectedUnit = {
   heroId: string;
-  skillOrders: [number, number, number]; // 0=アートスキル, 1=スフィア1, 2=スフィア2
+  skillOrders: [number, number, number]; // [first, second, third] 各値は 0=アート, 1=スフィア1, 2=スフィア2
   sphereIds: (string | null)[];
 };
 
@@ -66,43 +76,74 @@ type BattleResult = {
 };
 
 // ============================================================
-// グローバルキャッシュ（再ロード防止・重複fetch防止）
+// 定数 — rarity/attribute マッピング
+// rarity数値: NFTメタデータ "Legendary" = /v1/heroes rarity:5 と確認済み
+// → 5=Legendary(L/LL), 4=?, 3=?, 2=Rare?, 1=Uncommon?  ★確認後にここを調整
 // ============================================================
-const heroCache: Record<string, HeroMetadata> = {};
-const sphereCache: Record<string, SphereMetadata> = {};
-const heroFetching = new Set<string>();
-const sphereFetching = new Set<string>();
+const UNIT_RARITY_MAP: Record<number, string> = {
+  5: 'L', 4: 'E', 3: 'R', 2: 'U', 1: 'C',
+};
+const SPHERE_RARITY_MAP: Record<number, string> = {
+  5: 'L', 4: 'E', 3: 'R', 2: 'U', 1: 'C',
+};
+// NFTメタデータのrarity文字列 → 表示ラベル
+const RARITY_LABEL: Record<string, string> = {
+  Legendary: 'L', Epic: 'E', Rare: 'R', Uncommon: 'U', Common: 'C',
+};
+// フィルターボタン順
+const UNIT_RARITY_FILTERS  = ['L', 'E', 'R', 'U'] as const;
+const SPHERE_RARITY_FILTERS = ['L', 'E', 'R', 'U', 'C'] as const;
 
-function fetchHeroMeta(heroId: string, onDone: (d: HeroMetadata) => void) {
-  if (heroCache[heroId]) { onDone(heroCache[heroId]); return; }
-  if (heroFetching.has(heroId)) return;
-  heroFetching.add(heroId);
+const UNIT_ATTR_MAP: Record<number, { label: string; tw: string }> = {
+  1: { label: '炎', tw: 'bg-red-100 text-red-700 border-red-300' },
+  2: { label: '水', tw: 'bg-sky-100 text-sky-700 border-sky-300' },
+  3: { label: '樹', tw: 'bg-green-100 text-green-700 border-green-300' },
+  4: { label: '雷', tw: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+  5: { label: '光', tw: 'bg-orange-100 text-orange-700 border-orange-300' },
+  6: { label: '闇', tw: 'bg-purple-100 text-purple-700 border-purple-300' },
+};
+const UNIT_ATTR_IDS = [1, 2, 3, 4, 5, 6];
+
+// ============================================================
+// グローバルキャッシュ（再マウント時も再fetchしない）
+// ============================================================
+const heroMetaCache: Record<string, HeroMetadata> = {};
+const sphereMetaCache: Record<string, SphereMetadata> = {};
+const heroMetaFetching = new Set<string>();
+const sphereMetaFetching = new Set<string>();
+
+function fetchHeroMeta(heroId: string, cb: (d: HeroMetadata) => void) {
+  if (heroMetaCache[heroId]) { cb(heroMetaCache[heroId]); return; }
+  if (heroMetaFetching.has(heroId)) return;
+  heroMetaFetching.add(heroId);
   fetch(`/api/hero/metadata/${heroId}`)
-    .then((r) => r.ok ? r.json() : null)
-    .then((d) => { if (d) { heroCache[heroId] = d; onDone(d); } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d) { heroMetaCache[heroId] = d; cb(d); } })
     .catch(() => {})
-    .finally(() => heroFetching.delete(heroId));
+    .finally(() => heroMetaFetching.delete(heroId));
 }
 
-function fetchSphereMeta(sphereId: string, onDone: (d: SphereMetadata) => void) {
-  if (sphereCache[sphereId]) { onDone(sphereCache[sphereId]); return; }
-  if (sphereFetching.has(sphereId)) return;
-  sphereFetching.add(sphereId);
+function fetchSphereMeta(sphereId: string, cb: (d: SphereMetadata) => void) {
+  if (sphereMetaCache[sphereId]) { cb(sphereMetaCache[sphereId]); return; }
+  if (sphereMetaFetching.has(sphereId)) return;
+  sphereMetaFetching.add(sphereId);
   fetch(`/api/sphere/metadata/${sphereId}`)
-    .then((r) => r.ok ? r.json() : null)
-    .then((d) => { if (d) { sphereCache[sphereId] = d; onDone(d); } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d) { sphereMetaCache[sphereId] = d; cb(d); } })
     .catch(() => {})
-    .finally(() => sphereFetching.delete(sphereId));
+    .finally(() => sphereMetaFetching.delete(sphereId));
 }
 
 function useHeroMeta(heroId: string) {
-  const [meta, setMeta] = useState<HeroMetadata | null>(heroCache[heroId] ?? null);
+  const [meta, setMeta] = useState<HeroMetadata | null>(heroMetaCache[heroId] ?? null);
   useEffect(() => { fetchHeroMeta(heroId, setMeta); }, [heroId]);
   return meta;
 }
 
 function useSphereMeta(sphereId: string | null) {
-  const [meta, setMeta] = useState<SphereMetadata | null>(sphereId ? (sphereCache[sphereId] ?? null) : null);
+  const [meta, setMeta] = useState<SphereMetadata | null>(
+    sphereId ? (sphereMetaCache[sphereId] ?? null) : null
+  );
   useEffect(() => {
     if (!sphereId) { setMeta(null); return; }
     fetchSphereMeta(sphereId, setMeta);
@@ -124,28 +165,36 @@ function DifficultyStars({ level }: { level: number }) {
 }
 
 // ============================================================
-// 詳細ポップアップ
+// ユニット詳細モーダル（gameDataも受け取って属性表示）
 // ============================================================
-function HeroDetailModal({ heroId, onClose }: { heroId: string; onClose: () => void }) {
+function HeroDetailModal({ heroId, gameData, onClose }: {
+  heroId: string;
+  gameData?: HeroGameData;
+  onClose: () => void;
+}) {
   const meta = useHeroMeta(heroId);
+  const rarityLabel = meta ? (RARITY_LABEL[meta.attributes.rarity] ?? meta.attributes.rarity) : '';
+  const attrInfo = gameData ? UNIT_ATTR_MAP[gameData.attribute] : null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div className="bg-white border-2 border-neutral-900 rounded-xl max-w-sm w-full shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white border-2 border-neutral-900 rounded-xl max-w-sm w-full shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
         {meta ? (
           <>
             <div className="relative">
               <img src={meta.image} alt="" className="w-full h-48 object-cover" />
               <button onClick={onClose} className="absolute top-2 right-2 bg-white rounded-full p-1 shadow"><X className="w-4 h-4" /></button>
-              <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">{meta.attributes.rarity}</span>
+              <div className="absolute bottom-2 left-2 flex gap-1">
+                <span className="bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">{rarityLabel}</span>
+                {attrInfo && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${attrInfo.tw}`}>{attrInfo.label}</span>
+                )}
+              </div>
             </div>
             <div className="p-4 space-y-3">
               <div>
                 <p className="font-black text-sm uppercase">{meta.attributes.type_name}</p>
                 <p className="text-xs text-neutral-400 font-mono">Lv {meta.attributes.lv}</p>
-                {/* デバッグ: 実際のrarity/element値確認用（確認後に削除） */}
-                <p className="text-[9px] text-orange-400 font-mono">
-                  rarity="{meta.attributes.rarity}" element="{meta.attributes.element ?? meta.attributes.attribute ?? '?'}"
-                </p>
               </div>
               <div className="grid grid-cols-3 gap-1 text-[10px] font-mono">
                 {([['HP', meta.attributes.hp], ['PHY', meta.attributes.phy], ['INT', meta.attributes.int],
@@ -180,16 +229,28 @@ function HeroDetailModal({ heroId, onClose }: { heroId: string; onClose: () => v
   );
 }
 
-function SphereDetailModal({ sphereId, onClose }: { sphereId: string; onClose: () => void }) {
+// ============================================================
+// スフィア詳細モーダル
+// ============================================================
+function SphereDetailModal({ sphereId, gameData, onClose }: {
+  sphereId: string;
+  gameData?: SphereGameData;
+  onClose: () => void;
+}) {
   const meta = useSphereMeta(sphereId);
+  const rarityLabel = meta ? (RARITY_LABEL[meta.attributes.rarity] ?? meta.attributes.rarity) : '';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div className="bg-white border-2 border-neutral-900 rounded-xl max-w-xs w-full shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white border-2 border-neutral-900 rounded-xl max-w-xs w-full shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
         {meta ? (
           <>
             <div className="relative bg-neutral-50 flex items-center justify-center h-36">
               <img src={meta.image} alt="" className="h-full object-contain" />
               <button onClick={onClose} className="absolute top-2 right-2 bg-white rounded-full p-1 shadow"><X className="w-4 h-4" /></button>
+              {rarityLabel && (
+                <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">{rarityLabel}</span>
+              )}
             </div>
             <div className="p-4 space-y-3">
               <p className="font-black text-sm uppercase">{meta.attributes.type_name}</p>
@@ -204,8 +265,11 @@ function SphereDetailModal({ sphereId, onClose }: { sphereId: string; onClose: (
                   ) : null
                 ))}
               </div>
-              {meta.attributes.ability_name && (
-                <p className="text-xs text-neutral-600">{meta.attributes.ability_name}</p>
+              {(meta.attributes.sphere_skill || meta.attributes.ability_name) && (
+                <div className="text-xs">
+                  <p className="font-black text-blue-700 text-[10px] uppercase mb-0.5">Sphere Skill</p>
+                  <p className="text-neutral-600 leading-snug">{meta.attributes.sphere_skill ?? meta.attributes.ability_name}</p>
+                </div>
               )}
             </div>
           </>
@@ -218,13 +282,16 @@ function SphereDetailModal({ sphereId, onClose }: { sphereId: string; onClose: (
 }
 
 // ============================================================
-// 小さいユニットカード
+// ユニットミニカード
 // ============================================================
-function UnitMiniCard({ heroId, isSelected, isDisabled, onClick }: {
-  heroId: string; isSelected: boolean; isDisabled: boolean; onClick: () => void;
+function UnitMiniCard({ heroId, isSelected, isDisabled, gameData, onClick }: {
+  heroId: string; isSelected: boolean; isDisabled: boolean;
+  gameData?: HeroGameData; onClick: () => void;
 }) {
   const meta = useHeroMeta(heroId);
   const [showDetail, setShowDetail] = useState(false);
+  const attrInfo = gameData ? UNIT_ATTR_MAP[gameData.attribute] : null;
+  const rarityLabel = meta ? (RARITY_LABEL[meta.attributes.rarity] ?? '') : '';
 
   return (
     <>
@@ -236,21 +303,31 @@ function UnitMiniCard({ heroId, isSelected, isDisabled, onClick }: {
         }`}
         onClick={() => !isDisabled && onClick()}
       >
+        {/* 属性バッジ */}
+        {attrInfo && (
+          <span className={`absolute top-1 left-1 z-10 text-[8px] font-black px-1 rounded border ${attrInfo.tw}`}>
+            {attrInfo.label}
+          </span>
+        )}
+        {/* 詳細ボタン */}
         {meta && (
           <button className="absolute top-1 right-1 z-10 bg-white/80 rounded-full p-0.5 hover:bg-white"
-            onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}>
+            onClick={e => { e.stopPropagation(); setShowDetail(true); }}>
             <Info className="w-3 h-3 text-neutral-400" />
           </button>
         )}
         {meta?.image ? (
-          <img src={meta.image} alt="" className="w-full aspect-square object-cover rounded-t-md" />
+          <img src={meta.image} alt="" loading="lazy" className="w-full aspect-square object-cover rounded-t-md" />
         ) : (
           <div className="w-full aspect-square bg-neutral-100 rounded-t-md animate-pulse" />
         )}
         <div className="px-1.5 py-1">
-          <p className="text-[10px] font-bold uppercase leading-tight truncate">
-            {meta?.attributes?.type_name ?? `#${heroId}`}
-          </p>
+          <div className="flex items-center gap-1 mb-0.5">
+            {rarityLabel && <span className="text-[8px] font-black text-neutral-400 uppercase">{rarityLabel}</span>}
+            <p className="text-[10px] font-bold uppercase leading-tight truncate flex-1">
+              {meta?.attributes?.type_name ?? `#${heroId}`}
+            </p>
+          </div>
           {meta?.attributes && (
             <p className="text-[9px] font-mono text-neutral-400">HP {(meta.attributes.hp ?? 0).toLocaleString()}</p>
           )}
@@ -261,17 +338,20 @@ function UnitMiniCard({ heroId, isSelected, isDisabled, onClick }: {
           </div>
         )}
       </div>
-      {showDetail && <HeroDetailModal heroId={heroId} onClose={() => setShowDetail(false)} />}
+      {showDetail && <HeroDetailModal heroId={heroId} gameData={gameData} onClose={() => setShowDetail(false)} />}
     </>
   );
 }
 
 // ============================================================
-// 小さいスフィアカード
+// スフィアミニカード
 // ============================================================
-function SphereMiniCard({ sphereId, onClick }: { sphereId: string; onClick: () => void }) {
+function SphereMiniCard({ sphereId, gameData, onClick }: {
+  sphereId: string; gameData?: SphereGameData; onClick: () => void;
+}) {
   const meta = useSphereMeta(sphereId);
   const [showDetail, setShowDetail] = useState(false);
+  const rarityLabel = gameData ? (SPHERE_RARITY_MAP[gameData.rarity] ?? '') : '';
 
   return (
     <>
@@ -279,14 +359,19 @@ function SphereMiniCard({ sphereId, onClick }: { sphereId: string; onClick: () =
         className="relative border-2 border-neutral-300 rounded-lg cursor-pointer hover:border-blue-500 bg-white hover:bg-blue-50 transition-all"
         onClick={onClick}
       >
+        {rarityLabel && (
+          <span className="absolute top-1 left-1 z-10 text-[8px] font-black text-neutral-500 bg-white/90 px-1 rounded">
+            {rarityLabel}
+          </span>
+        )}
         {meta && (
           <button className="absolute top-1 right-1 z-10 bg-white/80 rounded-full p-0.5 hover:bg-white"
-            onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}>
+            onClick={e => { e.stopPropagation(); setShowDetail(true); }}>
             <Info className="w-3 h-3 text-neutral-400" />
           </button>
         )}
         {meta?.image ? (
-          <img src={meta.image} alt="" className="w-full aspect-square object-contain p-1" />
+          <img src={meta.image} alt="" loading="lazy" className="w-full aspect-square object-contain p-1" />
         ) : (
           <div className="w-full aspect-square bg-neutral-100 rounded-t-md animate-pulse" />
         )}
@@ -303,20 +388,16 @@ function SphereMiniCard({ sphereId, onClick }: { sphereId: string; onClick: () =
           )}
         </div>
       </div>
-      {showDetail && <SphereDetailModal sphereId={sphereId} onClose={() => setShowDetail(false)} />}
+      {showDetail && <SphereDetailModal sphereId={sphereId} gameData={gameData} onClose={() => setShowDetail(false)} />}
     </>
   );
 }
 
 // ============================================================
-// 選択済みユニット行
+// 選択済みユニット行（スフィアアイコン付き + スキル順）
 // ============================================================
 const SKILL_LABELS = ['アート', 'スフィア1', 'スフィア2'];
-const SKILL_COLORS = [
-  'bg-pink-100 text-pink-700',
-  'bg-blue-100 text-blue-700',
-  'bg-green-100 text-green-700',
-];
+const SKILL_COLORS = ['bg-pink-100 text-pink-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700'];
 
 function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkillOrderChange }: {
   unit: SelectedUnit;
@@ -332,32 +413,35 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
 
   const moveSkill = (idx: number, dir: -1 | 1) => {
     const newOrders = [...unit.skillOrders] as [number, number, number];
-    const swapIdx = idx + dir;
-    if (swapIdx < 0 || swapIdx > 2) return;
-    [newOrders[idx], newOrders[swapIdx]] = [newOrders[swapIdx], newOrders[idx]];
+    const swap = idx + dir;
+    if (swap < 0 || swap > 2) return;
+    [newOrders[idx], newOrders[swap]] = [newOrders[swap], newOrders[idx]];
     onSkillOrderChange(newOrders);
   };
 
   return (
     <div className="border border-neutral-200 rounded-lg bg-white overflow-hidden">
+      {/* ユニット */}
       <div className="flex items-center gap-2 p-2 border-b border-neutral-100">
         <div className="w-9 h-9 flex-shrink-0 rounded overflow-hidden bg-neutral-100">
-          {meta?.image ? <img src={meta.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full animate-pulse bg-neutral-200" />}
+          {meta?.image
+            ? <img src={meta.image} alt="" className="w-full h-full object-cover" />
+            : <div className="w-full h-full animate-pulse bg-neutral-200" />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-xs uppercase truncate">{meta?.attributes?.type_name ?? `Unit #${unit.heroId}`}</p>
           {meta?.attributes && <p className="text-[9px] text-neutral-400 font-mono">HP {(meta.attributes.hp ?? 0).toLocaleString()}</p>}
         </div>
-        <button onClick={onRemove} className="text-neutral-300 hover:text-red-500 font-bold text-sm px-1">×</button>
+        <button onClick={onRemove} className="text-neutral-300 hover:text-red-500 font-bold text-sm px-1 flex-shrink-0">×</button>
       </div>
 
-      {/* スフィアスロット */}
+      {/* スフィアスロット（アイコン付き） */}
       <div className="flex gap-1.5 px-2 py-1.5">
         {[0, 1].map((slotIdx) => {
           const sId = unit.sphereIds[slotIdx];
           const sMeta = sphereMetas[slotIdx];
           return (
-            <div key={slotIdx} className="flex items-center gap-1 flex-1">
+            <div key={slotIdx} className="flex items-center gap-1 flex-1 min-w-0">
               <button
                 onClick={() => onSphereClick(slotIdx)}
                 className={`flex-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 border rounded transition-colors text-left min-w-0 ${
@@ -372,7 +456,10 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
                   {sMeta?.attributes?.type_name ?? (sId ? `#${sId}` : `＋ S${slotIdx + 1}`)}
                 </span>
               </button>
-              {sId && <button onClick={() => onSphereRemove(slotIdx)} className="text-neutral-300 hover:text-red-500 text-xs leading-none flex-shrink-0">×</button>}
+              {sId && (
+                <button onClick={() => onSphereRemove(slotIdx)}
+                  className="text-neutral-300 hover:text-red-500 text-xs leading-none flex-shrink-0">×</button>
+              )}
             </div>
           );
         })}
@@ -405,89 +492,131 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
 }
 
 // ============================================================
+// フィルターボタン（共通）
+// ============================================================
+function FilterBtn({ label, active, tw, onClick }: {
+  label: string; active: boolean; tw?: string; onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick}
+      className={`text-[10px] font-black px-2 py-0.5 rounded border transition-colors ${
+        active ? (tw ? tw.replace('border-', 'bg-neutral-900 text-white border-') : 'bg-neutral-900 text-white border-neutral-900')
+               : `border-neutral-300 text-neutral-500 hover:border-neutral-500 ${tw ?? ''}`
+      }`}>
+      {label}
+    </button>
+  );
+}
+
+// ============================================================
 // メインコンポーネント
 // ============================================================
 export default function BattlePage() {
   const router = useRouter();
   const params = useParams();
   const stageId = Number(params.id);
-  const stage = STAGES.find((s) => s.id === stageId);
+  const stage = STAGES.find(s => s.id === stageId);
 
   const { data: meData } = useGetV1Me();
   const { data: unitListData, isLoading: isLoadingUnits } = useGetV1MeUnits();
   const { data: sphereListData, isLoading: isLoadingSpheres } = useGetV1MeSpheres();
 
-  const [unitSearch, setUnitSearch] = useState('');
-  const [sphereSearch, setSphereSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'party' | 'units' | 'spheres'>('units');
+  // ゲームデータ（rarity/attribute）— ページロード時1回だけfetch
+  const [heroGameMap, setHeroGameMap]     = useState<Record<string, HeroGameData>>({});
+  const [sphereGameMap, setSphereGameMap] = useState<Record<string, SphereGameData>>({});
+  const gameFetchedRef = useRef(false);
 
-  // フィルター状態
-  const [unitRarityFilter, setUnitRarityFilter] = useState<string | null>(null);
-  const [unitAttrFilter, setUnitAttrFilter] = useState<string | null>(null);
-  const [sphereRarityFilter, setSphereRarityFilter] = useState<string | null>(null);
+  useEffect(() => {
+    if (gameFetchedRef.current) return;
+    const units   = unitListData?.units ?? [];
+    const spheres = sphereListData?.spheres ?? [];
+    if (units.length === 0 && spheres.length === 0) return;
+    gameFetchedRef.current = true;
 
-  // ユニットレアリティ（NFTメタデータのrarity文字列、実際の値確認後に調整）
-  const UNIT_RARITIES = ['LL', 'L', 'E', 'R', 'U'] as const;
-  // ユニット属性（NFTメタデータの実際のフィールド名・値は確認後に調整）
-  const UNIT_ATTRS = [
-    { label: '炎', value: 'fire' },
-    { label: '水', value: 'water' },
-    { label: '樹', value: 'earth' },
-    { label: '雷', value: 'thunder' },
-    { label: '光', value: 'light' },
-    { label: '闇', value: 'dark' },
-  ] as const;
-  const SPHERE_RARITIES = ['L', 'E', 'R', 'U', 'C'] as const;
+    if (units.length > 0) {
+      fetch('/api/bfh/v1/heroes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hero_ids: units.map(Number) }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const datas: HeroGameData[] = d?.heroes?.hero_datas ?? [];
+          const map: Record<string, HeroGameData> = {};
+          datas.forEach(h => { map[String(h.hero_id)] = h; });
+          setHeroGameMap(map);
+        })
+        .catch(() => {});
+    }
 
+    if (spheres.length > 0) {
+      fetch('/api/bfh/v1/spheres', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sphere_ids: spheres.map(Number) }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          const datas: SphereGameData[] = d?.spheres?.extension_datas ?? [];
+          const map: Record<string, SphereGameData> = {};
+          datas.forEach(s => { map[String(s.extension_id)] = s; });
+          setSphereGameMap(map);
+        })
+        .catch(() => {});
+    }
+  }, [unitListData?.units, sphereListData?.spheres]);
+
+  // UI状態
+  const [unitSearch,    setUnitSearch]    = useState('');
+  const [sphereSearch,  setSphereSearch]  = useState('');
+  const [activeTab,     setActiveTab]     = useState<'party' | 'units' | 'spheres'>('units');
+  const [unitRarity,    setUnitRarity]    = useState<string | null>(null);
+  const [unitAttr,      setUnitAttr]      = useState<number | null>(null);
+  const [sphereRarity,  setSphereRarity]  = useState<string | null>(null);
+
+  // パーティ状態
   const [selectedUnits, setSelectedUnits] = useState<SelectedUnit[]>([]);
   const maxUnits = 5;
-
   const [spherePickTarget, setSpherePickTarget] = useState<{ unitIdx: number; slotIdx: number } | null>(null);
+
+  // バトル状態
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
-  const [battleError, setBattleError] = useState<string | null>(null);
+  const [battleError,  setBattleError]  = useState<string | null>(null);
 
-  // 検索用にキャッシュを定期的に同期
-  const [unitMetaSnapshot, setUnitMetaSnapshot] = useState<Record<string, HeroMetadata>>({});
-  const [sphereMetaSnapshot, setSphereMetaSnapshot] = useState<Record<string, SphereMetadata>>({});
+  // 検索のためNFTキャッシュを定期同期
+  const [unitMetaSnap,   setUnitMetaSnap]   = useState<Record<string, HeroMetadata>>({});
+  const [sphereMetaSnap, setSphereMetaSnap] = useState<Record<string, SphereMetadata>>({});
   useEffect(() => {
-    const timer = setInterval(() => {
-      const newHero = Object.entries(heroCache).filter(([k]) => !unitMetaSnapshot[k]);
-      const newSphere = Object.entries(sphereCache).filter(([k]) => !sphereMetaSnapshot[k]);
-      if (newHero.length > 0) setUnitMetaSnapshot((p) => ({ ...p, ...Object.fromEntries(newHero) }));
-      if (newSphere.length > 0) setSphereMetaSnapshot((p) => ({ ...p, ...Object.fromEntries(newSphere) }));
+    const t = setInterval(() => {
+      const nh = Object.entries(heroMetaCache).filter(([k]) => !unitMetaSnap[k]);
+      const ns = Object.entries(sphereMetaCache).filter(([k]) => !sphereMetaSnap[k]);
+      if (nh.length) setUnitMetaSnap(p => ({ ...p, ...Object.fromEntries(nh) }));
+      if (ns.length) setSphereMetaSnap(p => ({ ...p, ...Object.fromEntries(ns) }));
     }, 500);
-    return () => clearInterval(timer);
-  }, [unitMetaSnapshot, sphereMetaSnapshot]);
+    return () => clearInterval(t);
+  }, [unitMetaSnap, sphereMetaSnap]);
 
-  const filteredUnits = (unitListData?.units ?? []).filter((id) => {
-    const meta = unitMetaSnapshot[id];
+  // フィルター済みリスト
+  const filteredUnits = (unitListData?.units ?? []).filter(id => {
     if (unitSearch) {
       const q = unitSearch.toLowerCase();
-      if (!(meta?.attributes?.type_name ?? '').toLowerCase().includes(q) && !id.includes(q)) return false;
+      const n = (unitMetaSnap[id]?.attributes?.type_name ?? heroGameMap[id]?.name ?? '').toLowerCase();
+      if (!n.includes(q) && !id.includes(q)) return false;
     }
-    if (unitRarityFilter) {
-      const r = (meta?.attributes?.rarity ?? '').toLowerCase();
-      // 実際のrarity文字列が確認できたらここを調整
-      // デバッグ: コンソールに実際値が出るのでそれで確認
-      if (!r.includes(unitRarityFilter.toLowerCase())) return false;
-    }
-    if (unitAttrFilter) {
-      const el = (meta?.attributes?.element ?? meta?.attributes?.attribute ?? '').toLowerCase();
-      if (!el.includes(unitAttrFilter.toLowerCase())) return false;
-    }
+    const gd = heroGameMap[id];
+    if (unitRarity && gd && UNIT_RARITY_MAP[gd.rarity] !== unitRarity) return false;
+    if (unitAttr  && gd && gd.attribute !== unitAttr) return false;
     return true;
   });
 
-  const filteredSpheres = (sphereListData?.spheres ?? []).filter((id) => {
-    const meta = sphereMetaSnapshot[id];
+  const filteredSpheres = (sphereListData?.spheres ?? []).filter(id => {
     if (sphereSearch) {
       const q = sphereSearch.toLowerCase();
-      if (!(meta?.attributes?.type_name ?? '').toLowerCase().includes(q) && !id.includes(q)) return false;
+      const n = (sphereMetaSnap[id]?.attributes?.type_name ?? sphereGameMap[id]?.name ?? '').toLowerCase();
+      if (!n.includes(q) && !id.includes(q)) return false;
     }
-    if (sphereRarityFilter) {
-      const r = (meta?.attributes?.rarity ?? '').toLowerCase();
-      if (!r.includes(sphereRarityFilter.toLowerCase())) return false;
-    }
+    const gd = sphereGameMap[id];
+    if (sphereRarity && gd && SPHERE_RARITY_MAP[gd.rarity] !== sphereRarity) return false;
     return true;
   });
 
@@ -522,10 +651,10 @@ export default function BattlePage() {
     );
   }
 
+  // アクション
   const toggleUnit = (heroId: string) => {
-    setSelectedUnits((prev) => {
-      const exists = prev.find((u) => u.heroId === heroId);
-      if (exists) return prev.filter((u) => u.heroId !== heroId);
+    setSelectedUnits(prev => {
+      if (prev.find(u => u.heroId === heroId)) return prev.filter(u => u.heroId !== heroId);
       if (prev.length >= maxUnits) return prev;
       return [...prev, { heroId, sphereIds: [null, null], skillOrders: [0, 1, 2] }];
     });
@@ -534,7 +663,7 @@ export default function BattlePage() {
   const assignSphere = (sphereId: string) => {
     if (!spherePickTarget) return;
     const { unitIdx, slotIdx } = spherePickTarget;
-    setSelectedUnits((prev) => {
+    setSelectedUnits(prev => {
       const next = [...prev];
       const unit = { ...next[unitIdx], sphereIds: [...next[unitIdx].sphereIds] };
       unit.sphereIds[slotIdx] = sphereId;
@@ -546,7 +675,7 @@ export default function BattlePage() {
   };
 
   const removeSphere = (unitIdx: number, slotIdx: number) => {
-    setSelectedUnits((prev) => {
+    setSelectedUnits(prev => {
       const next = [...prev];
       const unit = { ...next[unitIdx], sphereIds: [...next[unitIdx].sphereIds] };
       unit.sphereIds[slotIdx] = null;
@@ -556,7 +685,7 @@ export default function BattlePage() {
   };
 
   const updateSkillOrders = (unitIdx: number, newOrders: [number, number, number]) => {
-    setSelectedUnits((prev) => {
+    setSelectedUnits(prev => {
       const next = [...prev];
       next[unitIdx] = { ...next[unitIdx], skillOrders: newOrders };
       return next;
@@ -588,7 +717,7 @@ export default function BattlePage() {
 
   // ---- 結果画面 ----
   if (battleResult) {
-    const isWin = battleResult.result === 1;
+    const isWin  = battleResult.result === 1;
     const isDraw = battleResult.result === 0;
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -650,9 +779,15 @@ export default function BattlePage() {
             </div>
             <div className="relative">
               <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input type="text" placeholder="検索..." value={sphereSearch} onChange={(e) => setSphereSearch(e.target.value)}
+              <input type="text" placeholder="検索..." value={sphereSearch} onChange={e => setSphereSearch(e.target.value)}
                 className="pl-6 pr-3 py-1.5 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:border-blue-500 w-28" />
             </div>
+          </div>
+          {/* レアリティフィルター */}
+          <div className="flex gap-1.5 flex-wrap px-1">
+            {SPHERE_RARITY_FILTERS.map(r => (
+              <FilterBtn key={r} label={r} active={sphereRarity === r} onClick={() => setSphereRarity(sphereRarity === r ? null : r)} />
+            ))}
           </div>
           {isLoadingSpheres ? (
             <p className="text-center text-neutral-500 font-mono py-10">Loading...</p>
@@ -660,8 +795,8 @@ export default function BattlePage() {
             <p className="text-center text-neutral-500 font-mono py-10">スフィアが見つかりません</p>
           ) : (
             <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
-              {filteredSpheres.map((sphereId) => (
-                <SphereMiniCard key={sphereId} sphereId={sphereId} onClick={() => assignSphere(sphereId)} />
+              {filteredSpheres.map(id => (
+                <SphereMiniCard key={id} sphereId={id} gameData={sphereGameMap[id]} onClick={() => assignSphere(id)} />
               ))}
             </div>
           )}
@@ -671,7 +806,7 @@ export default function BattlePage() {
   }
 
   // ============================================================
-  // メイン編成画面
+  // メイン編成画面（3カラム）
   // ============================================================
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
@@ -693,9 +828,7 @@ export default function BattlePage() {
           disabled={selectedUnits.length === 0 || isBattling}
           onClick={handleBattle}
         >
-          {isBattling
-            ? <span className="animate-pulse">⚔️ 戦闘中...</span>
-            : <><Swords className="w-3.5 h-3.5 mr-1" />バトル！</>}
+          {isBattling ? <span className="animate-pulse">⚔️ 戦闘中...</span> : <><Swords className="w-3.5 h-3.5 mr-1" />バトル！</>}
         </Button>
       </div>
 
@@ -703,7 +836,7 @@ export default function BattlePage() {
 
       {/* モバイルタブ */}
       <div className="lg:hidden flex border-b border-neutral-200 bg-white">
-        {(['party', 'units', 'spheres'] as const).map((tab) => (
+        {(['party', 'units', 'spheres'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`flex-1 py-2 text-[11px] font-black uppercase tracking-wide transition-colors ${
               activeTab === tab ? 'border-b-2 border-red-600 text-red-600' : 'text-neutral-400 hover:text-neutral-700'
@@ -713,78 +846,66 @@ export default function BattlePage() {
         ))}
       </div>
 
-      {/* 3カラムレイアウト（デスクトップ） */}
+      {/* 3カラム */}
       <div className="flex-1 lg:grid lg:grid-cols-[260px_1fr_1fr] lg:overflow-hidden">
 
-        {/* パーティ編成 */}
+        {/* ── パーティ ── */}
         <div className={`lg:flex lg:flex-col lg:border-r-2 border-neutral-200 lg:overflow-y-auto ${activeTab !== 'party' ? 'hidden lg:flex' : ''}`}>
           <div className="p-3 space-y-2">
-            <p className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">
-              パーティ ({selectedUnits.length}/{maxUnits})
-            </p>
+            <p className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">パーティ ({selectedUnits.length}/{maxUnits})</p>
             {selectedUnits.length === 0 ? (
-              <p className="text-neutral-400 font-mono text-xs py-6 text-center border border-dashed border-neutral-200 rounded-lg">
-                ユニットを選んでください
-              </p>
+              <p className="text-neutral-400 font-mono text-xs py-6 text-center border border-dashed border-neutral-200 rounded-lg">ユニットを選んでください</p>
             ) : (
               <div className="space-y-2">
                 {selectedUnits.map((u, unitIdx) => (
-                  <SelectedUnitRow
-                    key={u.heroId}
-                    unit={u}
-                    onSphereClick={(slotIdx) => setSpherePickTarget({ unitIdx, slotIdx })}
-                    onSphereRemove={(slotIdx) => removeSphere(unitIdx, slotIdx)}
+                  <SelectedUnitRow key={u.heroId} unit={u}
+                    onSphereClick={slotIdx => setSpherePickTarget({ unitIdx, slotIdx })}
+                    onSphereRemove={slotIdx => removeSphere(unitIdx, slotIdx)}
                     onRemove={() => toggleUnit(u.heroId)}
-                    onSkillOrderChange={(newOrders) => updateSkillOrders(unitIdx, newOrders)}
-                  />
+                    onSkillOrderChange={orders => updateSkillOrders(unitIdx, orders)} />
                 ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* ユニット一覧 */}
+        {/* ── ユニット一覧 ── */}
         <div className={`lg:flex lg:flex-col lg:border-r-2 border-neutral-200 lg:overflow-y-auto ${activeTab !== 'units' ? 'hidden lg:flex' : ''}`}>
           <div className="p-3 space-y-2">
             {/* 検索 */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input type="text" placeholder="ユニット検索..." value={unitSearch} onChange={(e) => setUnitSearch(e.target.value)}
+              <input type="text" placeholder="ユニット検索..." value={unitSearch} onChange={e => setUnitSearch(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:border-red-400 bg-white" />
               {unitSearch && <button onClick={() => setUnitSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="w-3 h-3 text-neutral-400" /></button>}
             </div>
-            {/* レアリティフィルター */}
+            {/* レアリティ */}
             <div className="flex gap-1 flex-wrap">
-              {UNIT_RARITIES.map((r) => (
-                <button key={r} onClick={() => setUnitRarityFilter(unitRarityFilter === r ? null : r)}
-                  className={`text-[10px] font-black px-2 py-0.5 rounded border transition-colors ${
-                    unitRarityFilter === r ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
-                  }`}>
-                  {r}
-                </button>
+              {UNIT_RARITY_FILTERS.map(r => (
+                <FilterBtn key={r} label={r} active={unitRarity === r} onClick={() => setUnitRarity(unitRarity === r ? null : r)} />
               ))}
             </div>
-            {/* 属性フィルター（画像は後で差し替え、今はテキスト） */}
+            {/* 属性 */}
             <div className="flex gap-1 flex-wrap">
-              {UNIT_ATTRS.map((a) => (
-                <button key={a.value} onClick={() => setUnitAttrFilter(unitAttrFilter === a.value ? null : a.value)}
-                  className={`text-[10px] font-black px-2 py-0.5 rounded border transition-colors ${
-                    unitAttrFilter === a.value ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
-                  }`}>
-                  {a.label}
-                </button>
-              ))}
+              {UNIT_ATTR_IDS.map(a => {
+                const info = UNIT_ATTR_MAP[a];
+                return (
+                  <FilterBtn key={a} label={info.label} active={unitAttr === a} tw={info.tw}
+                    onClick={() => setUnitAttr(unitAttr === a ? null : a)} />
+                );
+              })}
             </div>
             <p className="text-[10px] text-neutral-400 font-mono">{filteredUnits.length}体</p>
             {isLoadingUnits ? (
-              <div className="grid grid-cols-3 gap-2">{Array.from({ length: 9 }).map((_, i) => <div key={i} className="aspect-square bg-neutral-100 rounded animate-pulse" />)}</div>
+              <div className="grid grid-cols-3 gap-2">{Array.from({length:9}).map((_,i)=><div key={i} className="aspect-square bg-neutral-100 rounded animate-pulse"/>)}</div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                {filteredUnits.map((heroId) => {
-                  const isSelected = selectedUnits.some((u) => u.heroId === heroId);
+                {filteredUnits.map(heroId => {
+                  const isSelected = selectedUnits.some(u => u.heroId === heroId);
                   const isDisabled = !isSelected && selectedUnits.length >= maxUnits;
                   return (
                     <UnitMiniCard key={heroId} heroId={heroId} isSelected={isSelected} isDisabled={isDisabled}
+                      gameData={heroGameMap[heroId]}
                       onClick={() => { toggleUnit(heroId); if (!isSelected) setActiveTab('party'); }} />
                   );
                 })}
@@ -793,34 +914,29 @@ export default function BattlePage() {
           </div>
         </div>
 
-        {/* スフィア一覧 */}
+        {/* ── スフィア一覧 ── */}
         <div className={`lg:flex lg:flex-col lg:overflow-y-auto ${activeTab !== 'spheres' ? 'hidden lg:flex' : ''}`}>
           <div className="p-3 space-y-2">
             {/* 検索 */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input type="text" placeholder="スフィア検索..." value={sphereSearch} onChange={(e) => setSphereSearch(e.target.value)}
+              <input type="text" placeholder="スフィア検索..." value={sphereSearch} onChange={e => setSphereSearch(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:border-blue-400 bg-white" />
               {sphereSearch && <button onClick={() => setSphereSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="w-3 h-3 text-neutral-400" /></button>}
             </div>
-            {/* レアリティフィルター */}
+            {/* レアリティ */}
             <div className="flex gap-1 flex-wrap">
-              {SPHERE_RARITIES.map((r) => (
-                <button key={r} onClick={() => setSphereRarityFilter(sphereRarityFilter === r ? null : r)}
-                  className={`text-[10px] font-black px-2 py-0.5 rounded border transition-colors ${
-                    sphereRarityFilter === r ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
-                  }`}>
-                  {r}
-                </button>
+              {SPHERE_RARITY_FILTERS.map(r => (
+                <FilterBtn key={r} label={r} active={sphereRarity === r} onClick={() => setSphereRarity(sphereRarity === r ? null : r)} />
               ))}
             </div>
             <p className="text-[10px] text-neutral-400 font-mono">{filteredSpheres.length}個 — パーティタブのスロットから装備</p>
             {isLoadingSpheres ? (
-              <div className="grid grid-cols-3 gap-2">{Array.from({ length: 9 }).map((_, i) => <div key={i} className="aspect-square bg-neutral-100 rounded animate-pulse" />)}</div>
+              <div className="grid grid-cols-3 gap-2">{Array.from({length:9}).map((_,i)=><div key={i} className="aspect-square bg-neutral-100 rounded animate-pulse"/>)}</div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                {filteredSpheres.map((sphereId) => (
-                  <SphereMiniCard key={sphereId} sphereId={sphereId} onClick={() => {}} />
+                {filteredSpheres.map(id => (
+                  <SphereMiniCard key={id} sphereId={id} gameData={sphereGameMap[id]} onClick={() => {}} />
                 ))}
               </div>
             )}
