@@ -474,25 +474,27 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
         )}
       </div>
 
-      {/* スフィアスロット（アイコン付き） */}
+      {/* スフィアスロット（色分け: スフィア1=青, スフィア2=緑） */}
       <div className="flex gap-1.5 px-2 py-1.5">
-        {[0, 1].map((slotIdx) => {
+        {([
+          { label: 'スフィア1', filledCls: 'border-blue-400 text-blue-700 bg-blue-50 hover:bg-blue-100', emptyCls: 'border-dashed border-blue-200 text-blue-300 hover:border-blue-400 hover:text-blue-400' },
+          { label: 'スフィア2', filledCls: 'border-green-400 text-green-700 bg-green-50 hover:bg-green-100', emptyCls: 'border-dashed border-green-200 text-green-300 hover:border-green-400 hover:text-green-400' },
+        ] as const).map(({ label, filledCls, emptyCls }, slotIdx) => {
           const sId = unit.sphereIds[slotIdx];
           const sMeta = sphereMetas[slotIdx];
           return (
             <div key={slotIdx} className="flex items-center gap-1 flex-1 min-w-0">
               <button
                 onClick={() => onSphereClick(slotIdx)}
-                className={`flex-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 border rounded transition-colors text-left min-w-0 ${
-                  sId ? 'border-blue-400 text-blue-700 bg-blue-50 hover:bg-blue-100'
-                      : 'border-dashed border-neutral-300 text-neutral-400 hover:border-blue-400'
-                }`}
+                className={`flex-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 border rounded transition-colors text-left min-w-0 ${sId ? filledCls : emptyCls}`}
               >
-                {sMeta?.image && (
+                {sMeta?.image ? (
                   <img src={sMeta.image} alt="" className="w-5 h-5 object-contain flex-shrink-0 rounded" />
+                ) : (
+                  <span className="text-[9px] font-black flex-shrink-0 opacity-60">{label[0]}{label.slice(-1)}</span>
                 )}
                 <span className="truncate">
-                  {sMeta?.attributes?.type_name ?? (sId ? `#${sId}` : `＋ S${slotIdx + 1}`)}
+                  {sMeta?.attributes?.type_name ?? (sId ? `#${sId}` : label)}
                 </span>
               </button>
               {sId && (
@@ -672,8 +674,13 @@ export default function BattlePage() {
       const n = (sphereMetaSnap[id]?.attributes?.type_name ?? sphereGameMap[id]?.name ?? '').toLowerCase();
       if (!n.includes(q) && !id.includes(q)) return false;
     }
-    const gd = sphereGameMap[id];
-    if (sphereRarity && gd && SPHERE_RARITY_MAP[gd.rarity] !== sphereRarity) return false;
+    // NFTメタデータのrarity文字列でフィルター（ゲームAPIのrarity数値マッピングが不確定のため）
+    if (sphereRarity) {
+      const metaRarity = sphereMetaSnap[id]?.attributes?.rarity ?? '';
+      const metaLabel = RARITY_LABEL[metaRarity] ?? '';
+      // メタデータ未取得の場合はフィルターをスルー（後でプリフェッチ後に更新される）
+      if (metaLabel && metaLabel !== sphereRarity) return false;
+    }
     return true;
   });
 
