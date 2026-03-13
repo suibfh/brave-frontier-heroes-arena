@@ -827,7 +827,7 @@ export default function BattlePage() {
   };
 
   const replayUrl = battleResult?.battle_key
-    ? `https://bravefrontierheroes.com/battle/${battleResult.battle_key}?returnUrl=https://brave-four-heroes-arena.vercel.app/stages`
+    ? `https://bravefrontierheroes.com/ja/battle/${battleResult.battle_key}?returnUrl=https://brave-four-heroes-arena.vercel.app/stages`
     : null;
 
   // ---- 結果画面 ----
@@ -861,7 +861,7 @@ export default function BattlePage() {
               {replayUrl && (
                 <a href={replayUrl} target="_blank" rel="noopener noreferrer">
                   <Button className="w-full bg-neutral-900 text-white hover:bg-blue-700 font-bold uppercase">
-                    <ExternalLink className="w-4 h-4 mr-2" />リプレイを見る
+                    <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
                   </Button>
                 </a>
               )}
