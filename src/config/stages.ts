@@ -100,7 +100,7 @@ export const STAGES: Stage[] = [
         skill_orders: [0, 1, 2],
       },
       {
-        hero_id: 20180053,
+        hero_id: 20180055,
         position: 3,
         extension_ids: [],
         skill_orders: [0, 1, 2],
