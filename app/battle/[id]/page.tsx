@@ -30,19 +30,6 @@ interface HeroMetadata {
   };
 }
 
-interface SphereMetadata {
-  name: string;
-  image: string;
-  attributes: {
-    type_name: string;
-    rarity: string;
-    lv: number;
-    hp: number; phy: number; int: number; agi: number; spr: number; def: number;
-    sphere_skill?: string;
-    ability_name?: string;
-  };
-}
-
 // /v1/heroes のゲームデータ（attribute はここだけにある）
 interface HeroGameData {
   hero_id: number;
@@ -129,9 +116,7 @@ const UNIT_ATTR_IDS = [1, 2, 3, 4, 5, 6];
 // グローバルキャッシュ（再マウント時も再fetchしない）
 // ============================================================
 const heroMetaCache: Record<string, HeroMetadata> = {};
-const sphereMetaCache: Record<string, SphereMetadata> = {};
 const heroMetaFetching = new Set<string>();
-const sphereMetaFetching = new Set<string>();
 
 function fetchHeroMeta(heroId: string, cb: (d: HeroMetadata) => void) {
   if (heroMetaCache[heroId]) { cb(heroMetaCache[heroId]); return; }
@@ -144,21 +129,9 @@ function fetchHeroMeta(heroId: string, cb: (d: HeroMetadata) => void) {
     .finally(() => heroMetaFetching.delete(heroId));
 }
 
-function getSphereImageUrl(meta: SphereMetadata | null, gameData?: SphereGameData): string | null {
-  if (meta?.image) return meta.image;
+function getSphereImageUrl(gameData?: SphereGameData): string | null {
   if (gameData?.extension_type) return `https://rsc.bravefrontierheroes.com/rsc/sphere/${gameData.extension_type}.png`;
   return null;
-}
-
-function fetchSphereMeta(sphereId: string, cb: (d: SphereMetadata) => void) {
-  if (sphereMetaCache[sphereId]) { cb(sphereMetaCache[sphereId]); return; }
-  if (sphereMetaFetching.has(sphereId)) return;
-  sphereMetaFetching.add(sphereId);
-  fetch(`/api/sphere/metadata/${sphereId}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(d => { if (d) { sphereMetaCache[sphereId] = d; cb(d); } })
-    .catch(() => {})
-    .finally(() => sphereMetaFetching.delete(sphereId));
 }
 
 function useHeroMeta(heroId: string) {
@@ -167,16 +140,6 @@ function useHeroMeta(heroId: string) {
   return meta;
 }
 
-function useSphereMeta(sphereId: string | null) {
-  const [meta, setMeta] = useState<SphereMetadata | null>(
-    sphereId ? (sphereMetaCache[sphereId] ?? null) : null
-  );
-  useEffect(() => {
-    if (!sphereId) { setMeta(null); return; }
-    fetchSphereMeta(sphereId, setMeta);
-  }, [sphereId]);
-  return meta;
-}
 
 // ============================================================
 // 画像URL変換
@@ -273,50 +236,41 @@ function HeroDetailModal({ heroId, gameData, onClose }: {
 // ============================================================
 // スフィア詳細モーダル
 // ============================================================
-function SphereDetailModal({ sphereId, gameData, onClose }: {
-  sphereId: string;
+function SphereDetailModal({ gameData, onClose }: {
   gameData?: SphereGameData;
   onClose: () => void;
 }) {
-  const meta = useSphereMeta(sphereId);
-  const rarityLabel = meta ? (RARITY_LABEL[meta.attributes.rarity] ?? meta.attributes.rarity) : '';
-
+  if (!gameData) return null;
+  const imageUrl = getSphereImageUrl(gameData);
+  const rarityLabel = SPHERE_RARITY_MAP[gameData.rarity] ?? '';
+  const p = gameData.param;
+  const PARAM_KEYS: [string, number][] = [
+    ['HP', p.hp ?? 0], ['PHY', p.phy ?? 0], ['INT', p.int ?? 0],
+    ['AGI', p.agi ?? 0], ['SPR', p.mnd ?? 0], ['DEF', p.vit ?? 0],
+  ];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
       <div className="bg-white border-2 border-neutral-900 rounded-xl max-w-xs w-full shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        {meta ? (
-          <>
-            <div className="relative bg-neutral-50 flex items-center justify-center h-36">
-              <img src={meta.image} alt="" className="h-full object-contain" />
-              <button onClick={onClose} className="absolute top-2 right-2 bg-white rounded-full p-1 shadow"><X className="w-4 h-4" /></button>
-              {rarityLabel && (
-                <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">{rarityLabel}</span>
-              )}
-            </div>
-            <div className="p-4 space-y-3">
-              <p className="font-black text-sm uppercase">{meta.attributes.type_name}</p>
-              <div className="grid grid-cols-3 gap-1 text-[10px] font-mono">
-                {([['HP', meta.attributes.hp], ['PHY', meta.attributes.phy], ['INT', meta.attributes.int],
-                   ['AGI', meta.attributes.agi], ['SPR', meta.attributes.spr], ['DEF', meta.attributes.def]] as [string, number][]).map(([k, v]) => (
-                  (v ?? 0) > 0 ? (
-                    <div key={k} className="bg-blue-50 rounded px-2 py-1 flex justify-between">
-                      <span className="text-blue-400 font-bold">{k}</span>
-                      <span className="font-bold text-blue-700">+{v}</span>
-                    </div>
-                  ) : null
-                ))}
+        <div className="relative bg-neutral-50 flex items-center justify-center h-36">
+          {imageUrl
+            ? <img src={imageUrl} alt="" className="h-full object-contain" />
+            : <div className="w-full h-full animate-pulse bg-neutral-200" />}
+          <button onClick={onClose} className="absolute top-2 right-2 bg-white rounded-full p-1 shadow"><X className="w-4 h-4" /></button>
+          {rarityLabel && (
+            <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">{rarityLabel}</span>
+          )}
+        </div>
+        <div className="p-4 space-y-3">
+          <p className="font-black text-sm uppercase">{gameData.name_jp || gameData.name}</p>
+          <div className="grid grid-cols-3 gap-1 text-[10px] font-mono">
+            {PARAM_KEYS.map(([k, v]) => (v > 0 ? (
+              <div key={k} className="bg-blue-50 rounded px-2 py-1 flex justify-between">
+                <span className="text-blue-400 font-bold">{k}</span>
+                <span className="font-bold text-blue-700">+{v}</span>
               </div>
-              {(meta.attributes.sphere_skill || meta.attributes.ability_name) && (
-                <div className="text-xs">
-                  <p className="font-black text-blue-700 text-[10px] uppercase mb-0.5">Sphere Skill</p>
-                  <p className="text-neutral-600 leading-snug">{meta.attributes.sphere_skill ?? meta.attributes.ability_name}</p>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="h-36 animate-pulse bg-neutral-100" />
-        )}
+            ) : null))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -387,12 +341,18 @@ function UnitMiniCard({ heroId, isSelected, isDisabled, gameData, onClick }: {
 // ============================================================
 // スフィアミニカード
 // ============================================================
-function SphereMiniCard({ sphereId, gameData, onClick }: {
-  sphereId: string; gameData?: SphereGameData; onClick: () => void;
+function SphereMiniCard({ gameData, onClick }: {
+  gameData?: SphereGameData; onClick: () => void;
 }) {
-  const meta = useSphereMeta(sphereId);
   const [showDetail, setShowDetail] = useState(false);
+  const imageUrl = getSphereImageUrl(gameData);
   const rarityLabel = gameData ? (SPHERE_RARITY_MAP[gameData.rarity] ?? '') : '';
+  const p = gameData?.param;
+  const mainStat = p ? (
+    (p.hp ?? 0) > 0 ? `HP+${p.hp}` :
+    (p.phy ?? 0) > 0 ? `PHY+${p.phy}` :
+    (p.int ?? 0) > 0 ? `INT+${p.int}` : ''
+  ) : '';
 
   return (
     <>
@@ -405,30 +365,23 @@ function SphereMiniCard({ sphereId, gameData, onClick }: {
             {rarityLabel}
           </span>
         )}
-        {meta && (
+        {gameData && (
           <button className="absolute top-0 right-0 z-10 w-8 h-8 flex items-center justify-center bg-white/90 rounded-bl-lg rounded-tr-md hover:bg-white active:bg-white"
             onClick={e => { e.stopPropagation(); setShowDetail(true); }}>
             <Info className="w-5 h-5 text-neutral-500" />
           </button>
         )}
-        {(() => { const url = getSphereImageUrl(meta, gameData); return url
-          ? <img src={url} alt="" loading="lazy" className="w-full aspect-square object-contain p-1" />
-          : <div className="w-full aspect-square bg-neutral-100 rounded-t-md animate-pulse" />;
-        })()}
+        {imageUrl
+          ? <img src={imageUrl} alt="" loading="lazy" className="w-full aspect-square object-contain p-1" />
+          : <div className="w-full aspect-square bg-neutral-100 rounded-t-md animate-pulse" />}
         <div className="px-1.5 py-1">
           <p className="text-[10px] font-bold uppercase leading-tight truncate">
-            {meta?.attributes?.type_name ?? `#${sphereId}`}
+            {gameData?.name_jp || gameData?.name || `#${gameData?.extension_id}`}
           </p>
-          {meta?.attributes && (
-            <p className="text-[9px] font-mono text-blue-500">
-              {(meta.attributes.hp ?? 0) > 0 ? `HP+${meta.attributes.hp}`
-               : (meta.attributes.phy ?? 0) > 0 ? `PHY+${meta.attributes.phy}`
-               : (meta.attributes.int ?? 0) > 0 ? `INT+${meta.attributes.int}` : ''}
-            </p>
-          )}
+          {mainStat && <p className="text-[9px] font-mono text-blue-500">{mainStat}</p>}
         </div>
       </div>
-      {showDetail && <SphereDetailModal sphereId={sphereId} gameData={gameData} onClose={() => setShowDetail(false)} />}
+      {showDetail && <SphereDetailModal gameData={gameData} onClose={() => setShowDetail(false)} />}
     </>
   );
 }
@@ -453,9 +406,7 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
   sphereGameData?: (SphereGameData | undefined)[];
 }) {
   const meta = useHeroMeta(unit.heroId);
-  const sphere0Meta = useSphereMeta(unit.sphereIds[0] ?? null);
-  const sphere1Meta = useSphereMeta(unit.sphereIds[1] ?? null);
-  const sphereMetas = [sphere0Meta, sphere1Meta];
+  const sphereMetas = sphereGameData ?? [undefined, undefined];
   const [showSkills, setShowSkills] = useState(false);
 
   const moveSkill = (idx: number, dir: -1 | 1) => {
@@ -475,7 +426,9 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
         agi: meta.attributes.agi, spr: meta.attributes.spr, def: meta.attributes.def }
     : null;
   const sphereBonus = STAT_KEYS.reduce((acc, k) => {
-    acc[k] = (sphere0Meta?.attributes?.[k] ?? 0) + (sphere1Meta?.attributes?.[k] ?? 0);
+    const gd0 = sphereGameData?.[0]; const gd1 = sphereGameData?.[1];
+    acc[k] = ((k === 'hp' ? gd0?.param?.hp : k === 'phy' ? gd0?.param?.phy : k === 'int' ? gd0?.param?.int : k === 'agi' ? gd0?.param?.agi : k === 'spr' ? gd0?.param?.mnd : gd0?.param?.vit) ?? 0)
+           + ((k === 'hp' ? gd1?.param?.hp : k === 'phy' ? gd1?.param?.phy : k === 'int' ? gd1?.param?.int : k === 'agi' ? gd1?.param?.agi : k === 'spr' ? gd1?.param?.mnd : gd1?.param?.vit) ?? 0);
     return acc;
   }, {} as Record<StatKey, number>);
   const totalStats = baseStats
@@ -553,12 +506,11 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
                 onClick={() => onSphereClick(slotIdx)}
                 className={`flex-1 flex items-center gap-1 text-[10px] font-bold px-1.5 py-1 border rounded transition-colors text-left min-w-0 ${sId ? filledCls : emptyCls}`}
               >
-                {(() => { const url = getSphereImageUrl(sMeta, sphereGameData?.[slotIdx]); return url
-                  ? <img src={url} alt="" className="w-5 h-5 object-contain flex-shrink-0 rounded" />
-                  : <span className="text-[9px] font-black flex-shrink-0 opacity-60">{label[0]}{label.slice(-1)}</span>;
-                })()}
+                {getSphereImageUrl(sphereMetas[slotIdx])
+                  ? <img src={getSphereImageUrl(sphereMetas[slotIdx])!} alt="" className="w-5 h-5 object-contain flex-shrink-0 rounded" />
+                  : <span className="text-[9px] font-black flex-shrink-0 opacity-60">{label[0]}{label.slice(-1)}</span>}
                 <span className="truncate">
-                  {sMeta?.attributes?.type_name ?? (sId ? `#${sId}` : label)}
+                  {sphereMetas[slotIdx]?.name_jp || sphereMetas[slotIdx]?.name || (sId ? `#${sId}` : label)}
                 </span>
               </button>
               {sId && (
@@ -777,24 +729,6 @@ export default function BattlePage() {
   }, [unitListData?.units, sphereListData?.spheres]);
 
   // スフィアメタをバックグラウンドでプリフェッチ（検索のため）
-  // 同時5件ずつキューで処理してリソース制限を回避
-  useEffect(() => {
-    const spheres = sphereListData?.spheres ?? [];
-    if (spheres.length === 0) return;
-    let idx = 0;
-    const CONCURRENCY = 5;
-    let active = 0;
-    function next() {
-      while (active < CONCURRENCY && idx < spheres.length) {
-        const id = spheres[idx++];
-        if (sphereMetaCache[id]) { next(); return; }
-        active++;
-        fetchSphereMeta(id, () => { active--; next(); });
-      }
-    }
-    next();
-  }, [sphereListData?.spheres]);
-
   // デッキ内ユニットをバックグラウンドでプリフェッチ（デッキタブのアイコン表示のため）
   // allDeckHeroIds を useMemo で安定させ、配列の中身が変わった時だけ useEffect を再実行する
   const allDeckHeroIds = useMemo(() => {
@@ -846,16 +780,13 @@ export default function BattlePage() {
 
   // 検索のためNFTキャッシュを定期同期
   const [unitMetaSnap,   setUnitMetaSnap]   = useState<Record<string, HeroMetadata>>({});
-  const [sphereMetaSnap, setSphereMetaSnap] = useState<Record<string, SphereMetadata>>({});
   useEffect(() => {
     const t = setInterval(() => {
       const nh = Object.entries(heroMetaCache).filter(([k]) => !unitMetaSnap[k]);
-      const ns = Object.entries(sphereMetaCache).filter(([k]) => !sphereMetaSnap[k]);
       if (nh.length) setUnitMetaSnap(p => ({ ...p, ...Object.fromEntries(nh) }));
-      if (ns.length) setSphereMetaSnap(p => ({ ...p, ...Object.fromEntries(ns) }));
     }, 500);
     return () => clearInterval(t);
-  }, [unitMetaSnap, sphereMetaSnap]);
+  }, [unitMetaSnap]);
 
   // フィルター済みリスト
   const filteredUnits = (unitListData?.units ?? []).filter(id => {
@@ -873,12 +804,12 @@ export default function BattlePage() {
   const filteredSpheres = (sphereListData?.spheres ?? []).filter(id => {
     if (sphereSearch) {
       const q = sphereSearch.toLowerCase();
-      const n = (sphereMetaSnap[id]?.attributes?.type_name ?? sphereGameMap[id]?.name ?? '').toLowerCase();
+      const n = (sphereGameMap[id]?.name_jp || sphereGameMap[id]?.name || '').toLowerCase();
       if (!n.includes(q) && !id.includes(q)) return false;
     }
     // NFTメタデータのrarity文字列でフィルター（ゲームAPIのrarity数値マッピングが不確定のため）
     if (sphereRarity) {
-      const metaRarity = sphereMetaSnap[id]?.attributes?.rarity ?? '';
+  
       const metaLabel = RARITY_LABEL[metaRarity] ?? '';
       // メタデータ未取得の場合はフィルターをスルー（後でプリフェッチ後に更新される）
       if (metaLabel && metaLabel !== sphereRarity) return false;
@@ -1137,7 +1068,7 @@ export default function BattlePage() {
           ) : (
             <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
               {filteredSpheres.map(id => (
-                <SphereMiniCard key={id} sphereId={id} gameData={sphereGameMap[id]} onClick={() => assignSphere(id)} />
+                <SphereMiniCard key={id} gameData={sphereGameMap[id]} onClick={() => assignSphere(id)} />
               ))}
             </div>
           )}
@@ -1326,7 +1257,7 @@ export default function BattlePage() {
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                 {filteredSpheres.map(id => (
-                  <SphereMiniCard key={id} sphereId={id} gameData={sphereGameMap[id]} onClick={() => {}} />
+                  <SphereMiniCard key={id} gameData={sphereGameMap[id]} onClick={() => {}} />
                 ))}
               </div>
             )}
