@@ -435,6 +435,7 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
   const sphere0Meta = useSphereMeta(unit.sphereIds[0] ?? null);
   const sphere1Meta = useSphereMeta(unit.sphereIds[1] ?? null);
   const sphereMetas = [sphere0Meta, sphere1Meta];
+  const [showSkills, setShowSkills] = useState(false);
 
   const moveSkill = (idx: number, dir: -1 | 1) => {
     const newOrders = [...unit.skillOrders] as [number, number, number];
@@ -443,6 +444,25 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
     [newOrders[idx], newOrders[swap]] = [newOrders[swap], newOrders[idx]];
     onSkillOrderChange(newOrders);
   };
+
+  // スフィア合算ステータス計算
+  type StatKey = 'hp' | 'phy' | 'int' | 'agi' | 'spr' | 'def';
+  const STAT_KEYS: StatKey[] = ['hp', 'phy', 'int', 'agi', 'spr', 'def'];
+  const STAT_LABELS: Record<StatKey, string> = { hp: 'HP', phy: 'PHY', int: 'INT', agi: 'AGI', spr: 'SPR', def: 'DEF' };
+  const baseStats = meta?.attributes
+    ? { hp: meta.attributes.hp, phy: meta.attributes.phy, int: meta.attributes.int,
+        agi: meta.attributes.agi, spr: meta.attributes.spr, def: meta.attributes.def }
+    : null;
+  const sphereBonus = STAT_KEYS.reduce((acc, k) => {
+    acc[k] = (sphere0Meta?.attributes?.[k] ?? 0) + (sphere1Meta?.attributes?.[k] ?? 0);
+    return acc;
+  }, {} as Record<StatKey, number>);
+  const totalStats = baseStats
+    ? STAT_KEYS.reduce((acc, k) => { acc[k] = baseStats[k] + sphereBonus[k]; return acc; }, {} as Record<StatKey, number>)
+    : null;
+
+  const hasBB = !!meta?.attributes?.brave_burst;
+  const hasArt = !!meta?.attributes?.art_skill;
 
   return (
     <div
@@ -464,7 +484,22 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-xs uppercase truncate">{meta?.attributes?.type_name ?? `Unit #${unit.heroId}`}</p>
-          {meta?.attributes && <p className="text-[9px] text-neutral-400 font-mono">HP {(meta.attributes.hp ?? 0).toLocaleString()}</p>}
+          {/* ステータス6種（スフィア合算） */}
+          {totalStats ? (
+            <div className="grid grid-cols-3 gap-x-2 gap-y-0 mt-0.5">
+              {STAT_KEYS.map(k => (
+                <div key={k} className="flex items-baseline gap-0.5">
+                  <span className="text-[8px] font-black text-neutral-400 w-5 flex-shrink-0">{STAT_LABELS[k]}</span>
+                  <span className="text-[9px] font-mono text-neutral-700">{totalStats[k].toLocaleString()}</span>
+                  {sphereBonus[k] > 0 && (
+                    <span className="text-[8px] font-bold text-emerald-500">+{sphereBonus[k].toLocaleString()}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-3 w-20 rounded animate-pulse bg-neutral-100 mt-1" />
+          )}
         </div>
         {reorderMode ? (
           <span className={`text-[10px] font-black px-2 py-0.5 rounded ${isReorderSelected ? 'bg-orange-500 text-white' : 'bg-neutral-200 text-neutral-500'}`}>
@@ -529,6 +564,35 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
           ))}
         </div>
       </div>
+
+      {/* BB・アートスキル */}
+      {(hasBB || hasArt) && !reorderMode && (
+        <div className="border-t border-neutral-100">
+          <button
+            onClick={e => { e.stopPropagation(); setShowSkills(v => !v); }}
+            className="w-full flex items-center justify-between px-2 py-1 text-[9px] font-black text-neutral-400 uppercase hover:bg-neutral-50 transition-colors"
+          >
+            <span>スキル詳細</span>
+            <span>{showSkills ? '▲' : '▼'}</span>
+          </button>
+          {showSkills && (
+            <div className="px-2 pb-2 space-y-1.5">
+              {hasBB && (
+                <div>
+                  <p className="text-[8px] font-black text-pink-500 uppercase mb-0.5">Brave Burst</p>
+                  <p className="text-[10px] text-neutral-600 leading-snug">{meta!.attributes.brave_burst}</p>
+                </div>
+              )}
+              {hasArt && (
+                <div>
+                  <p className="text-[8px] font-black text-purple-500 uppercase mb-0.5">Art Skill</p>
+                  <p className="text-[10px] text-neutral-600 leading-snug">{meta!.attributes.art_skill}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
