@@ -777,6 +777,7 @@ export default function BattlePage() {
   const selectedUnits = partySlots.filter((u): u is SelectedUnit => u !== null);
   const [spherePickTarget, setSpherePickTarget] = useState<{ unitIdx: number; slotIdx: number } | null>(null);
   const [unitPickSlot, setUnitPickSlot] = useState<number | null>(null); // 空スロットタップ時の対象スロット番号
+  const [swapHeroId, setSwapHeroId] = useState<string | null>(null);     // 5体満員時の入れ替え対象ユニットID
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderFirstIdx, setReorderFirstIdx] = useState<number | null>(null);
 
@@ -1049,7 +1050,7 @@ export default function BattlePage() {
         <div className="max-w-4xl mx-auto space-y-3">
           <div className="flex items-center gap-3 bg-white border-2 border-neutral-900 rounded-xl p-3">
             <Button variant="outline" size="icon" onClick={() => { setSpherePickTarget(null); setActiveTab('party'); }}
-              className="border-neutral-900 hover:bg-neutral-900 hover:text-white">
+              className="cyber-button border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white flex-shrink-0 w-8 h-8">
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <div className="flex-1">
@@ -1112,6 +1113,47 @@ export default function BattlePage() {
       </div>
 
       {battleError && <p className="text-red-500 font-bold text-center font-mono text-xs py-1.5 bg-red-50">{battleError}</p>}
+
+      {/* 入れ替えモーダル（5体満員時） */}
+      {swapHeroId && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4" onClick={() => setSwapHeroId(null)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-xl w-full max-w-sm shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-4 pt-4 pb-2 border-b border-neutral-100">
+              <p className="text-xs font-black uppercase text-neutral-400">入れ替え先を選択</p>
+              <p className="text-[10px] text-neutral-400 font-mono mt-0.5">タップしたユニットと入れ替えます</p>
+            </div>
+            <div className="p-3 space-y-1.5">
+              {partySlots.map((u, slotIdx) => {
+                if (!u) return null;
+                const m = heroMetaCache[u.heroId];
+                return (
+                  <button key={slotIdx}
+                    onClick={() => { assignUnitToSlot(swapHeroId, slotIdx); setSwapHeroId(null); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-200 hover:border-red-400 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <div className="w-8 h-8 flex-shrink-0 rounded overflow-hidden bg-neutral-100">
+                      {m?.image
+                        ? <img src={toFastUnitImageUrl(m.image)} alt="" className="w-full h-full object-cover" />
+                        : <div className="w-full h-full bg-neutral-200 animate-pulse" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold uppercase truncate">{m?.attributes?.type_name ?? `Unit #${u.heroId}`}</p>
+                      <p className="text-[9px] text-neutral-400 font-mono">スロット {slotIdx + 1}</p>
+                    </div>
+                    <span className="text-[10px] font-black text-red-500">入替</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="px-3 pb-3">
+              <button onClick={() => setSwapHeroId(null)}
+                className="w-full py-2 text-xs font-black text-neutral-400 hover:text-neutral-700 border border-neutral-200 rounded-lg">
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* モバイルタブ */}
       <div className="lg:hidden flex border-b border-neutral-200 bg-white">
@@ -1223,13 +1265,17 @@ export default function BattlePage() {
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-2">
                 {filteredUnits.map(heroId => {
                   const isSelected = selectedUnits.some(u => u.heroId === heroId);
-                  const isDisabled = !isSelected && selectedUnits.length >= maxUnits;
+                  const isDisabled = false; // 満員時は入れ替えモーダルで対応するので disabled にしない
                   return (
                     <UnitMiniCard key={heroId} heroId={heroId} isSelected={isSelected} isDisabled={isDisabled}
                       gameData={heroGameMap[heroId]}
                       onClick={() => {
                         if (isSelected) {
                           toggleUnit(heroId);
+                        } else if (selectedUnits.length >= maxUnits) {
+                          // 満員→入れ替えモーダル
+                          setSwapHeroId(heroId);
+                          setActiveTab('party');
                         } else {
                           assignUnitToSlot(heroId, unitPickSlot ?? undefined);
                           setActiveTab('party');
