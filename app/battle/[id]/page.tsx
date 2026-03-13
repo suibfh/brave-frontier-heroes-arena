@@ -780,6 +780,10 @@ export default function BattlePage() {
   }, [sphereListData?.spheres]);
 
   // デッキ内ユニットをバックグラウンドでプリフェッチ（デッキタブのアイコン表示のため）
+  // deckDataオブジェクト参照ではなくユニット総数（プリミティブ値）を依存にすることで
+  // データ取得完了を確実に検知してプリフェッチを走らせる
+  const deckHeroCount = ((deckData as any)?.deck_templates ?? [])
+    .flatMap((d: DeckTemplate) => d.units).length;
   useEffect(() => {
     const allDecks: DeckTemplate[] = [
       ...((deckData as any)?.deck_templates ?? []),
@@ -799,7 +803,7 @@ export default function BattlePage() {
       }
     }
     next();
-  }, [deckData]);
+  }, [deckHeroCount]);
 
   // UI状態
   const [unitSearch,    setUnitSearch]    = useState('');
