@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { saveClearRecord } from '@/src/lib/clearRecords';
 import { Card, CardContent } from '@/src/components/ui/card';
@@ -780,30 +780,30 @@ export default function BattlePage() {
   }, [sphereListData?.spheres]);
 
   // デッキ内ユニットをバックグラウンドでプリフェッチ（デッキタブのアイコン表示のため）
-  // deckDataオブジェクト参照ではなくユニット総数（プリミティブ値）を依存にすることで
-  // データ取得完了を確実に検知してプリフェッチを走らせる
-  const deckHeroCount = ((deckData as any)?.deck_templates ?? [])
-    .flatMap((d: DeckTemplate) => d.units).length;
-  useEffect(() => {
+  // allDeckHeroIds を useMemo で安定させ、配列の中身が変わった時だけ useEffect を再実行する
+  const allDeckHeroIds = useMemo(() => {
     const allDecks: DeckTemplate[] = [
       ...((deckData as any)?.deck_templates ?? []),
       ...((deckData as any)?.quest_deck_templates ?? []),
     ];
-    if (allDecks.length === 0) return;
-    const heroIds = [...new Set(allDecks.flatMap(d => d.units.map(u => String(u.hero_id))))];
+    return [...new Set(allDecks.flatMap(d => d.units.map(u => String(u.hero_id))))];
+  }, [deckData]);
+
+  useEffect(() => {
+    if (allDeckHeroIds.length === 0) return;
     let idx = 0;
     const CONCURRENCY = 5;
     let active = 0;
     function next() {
-      while (active < CONCURRENCY && idx < heroIds.length) {
-        const id = heroIds[idx++];
-        if (heroMetaCache[id]) { next(); return; }
+      while (active < CONCURRENCY && idx < allDeckHeroIds.length) {
+        const id = allDeckHeroIds[idx++];
+        if (heroMetaCache[id]) { active > 0 ? null : next(); return; }
         active++;
         fetchHeroMeta(id, () => { active--; next(); });
       }
     }
     next();
-  }, [deckHeroCount]);
+  }, [allDeckHeroIds]);
 
   // UI状態
   const [unitSearch,    setUnitSearch]    = useState('');
