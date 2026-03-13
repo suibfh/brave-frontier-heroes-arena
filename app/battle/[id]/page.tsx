@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { saveClearRecord } from '@/src/lib/clearRecords';
 import { Card, CardContent } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { ChevronLeft, Swords, Star, Trophy, Skull, Minus, ExternalLink, Search, X, Info, ArrowUp, ArrowDown } from 'lucide-react';
@@ -688,14 +689,18 @@ export default function BattlePage() {
     mutation: {
       onSuccess: (data) => {
         const res = data as any;
+        const result: number = res?.result ?? 2;
         setBattleResult({
-          result: res?.result ?? 2,
+          result,
           battle_key: res?.battle_key ?? '',
           attacker_taken_damage: res?.attacker_taken_damage ?? 0,
           defender_taken_damage: res?.defender_taken_damage ?? 0,
           player_name: res?.player_name ?? '',
           opponent_name: res?.opponent_name ?? '',
         });
+        // クリア記録を保存
+        const outcome = result === 1 ? 'WIN' : result === 0 ? 'DRAW' : 'LOSE';
+        saveClearRecord(stageId, outcome);
       },
       onError: (err: any) => {
         const detail = err?.response?.data?.message ?? err?.response?.data?.error ?? err?.message ?? 'バトルに失敗しました';
