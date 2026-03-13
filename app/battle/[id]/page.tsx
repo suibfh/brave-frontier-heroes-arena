@@ -421,7 +421,7 @@ const SKILL_LABELS = ['アート', 'スフィア1', 'スフィア2'];
 const SKILL_COLORS = ['bg-pink-100 text-pink-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700'];
 
 function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkillOrderChange,
-  reorderMode, isReorderSelected, onReorderTap }: {
+  reorderMode, isReorderSelected, onReorderTap, onUnitReselect }: {
   unit: SelectedUnit;
   onSphereClick: (slotIdx: number) => void;
   onSphereRemove: (slotIdx: number) => void;
@@ -430,6 +430,7 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
   reorderMode: boolean;
   isReorderSelected: boolean;
   onReorderTap: () => void;
+  onUnitReselect: () => void;
 }) {
   const meta = useHeroMeta(unit.heroId);
   const sphere0Meta = useSphereMeta(unit.sphereIds[0] ?? null);
@@ -477,12 +478,23 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
     >
       {/* ユニット */}
       <div className="flex items-center gap-2 p-2 border-b border-neutral-100">
-        <div className="w-9 h-9 flex-shrink-0 rounded overflow-hidden bg-neutral-100">
+        <button
+          onClick={!reorderMode ? onUnitReselect : undefined}
+          className={`w-9 h-9 flex-shrink-0 rounded overflow-hidden bg-neutral-100 relative group ${!reorderMode ? 'cursor-pointer' : ''}`}
+        >
           {meta?.image
             ? <img src={toFastUnitImageUrl(meta.image)} alt="" className="w-full h-full object-cover" />
             : <div className="w-full h-full animate-pulse bg-neutral-200" />}
-        </div>
-        <div className="flex-1 min-w-0">
+          {!reorderMode && (
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded flex items-center justify-center">
+              <span className="text-white text-[8px] font-black opacity-0 group-hover:opacity-100">変更</span>
+            </div>
+          )}
+        </button>
+        <div
+          onClick={!reorderMode ? onUnitReselect : undefined}
+          className={`flex-1 min-w-0 ${!reorderMode ? 'cursor-pointer' : ''}`}
+        >
           <p className="font-bold text-xs uppercase truncate">{meta?.attributes?.type_name ?? `Unit #${unit.heroId}`}</p>
           {/* ステータス6種（スフィア合算） */}
           {totalStats ? (
@@ -576,7 +588,7 @@ function SelectedUnitRow({ unit, onSphereClick, onSphereRemove, onRemove, onSkil
             <div className="px-2 pb-2 space-y-1.5">
               {hasBB && (
                 <div>
-                  <p className="text-[8px] font-black text-red-500 uppercase mb-0.5">Brave Burst</p>
+                  <p className="text-[8px] font-black text-purple-600 uppercase mb-0.5">Brave Burst</p>
                   <p className="text-[10px] text-neutral-600 leading-snug">{meta!.attributes.brave_burst}</p>
                 </div>
               )}
@@ -786,7 +798,7 @@ export default function BattlePage() {
   const assignUnitToSlot = (heroId: string, targetSlot?: number) => {
     setPartySlots(prev => {
       const next = [...prev];
-      // すでにどこかにいたら外す
+      // すでにどこかにいたら外す（同じユニットを再タップした場合 = 除外）
       const existingIdx = next.findIndex(u => u?.heroId === heroId);
       if (existingIdx !== -1) {
         next[existingIdx] = null;
@@ -795,7 +807,13 @@ export default function BattlePage() {
       // 入れ先を決定
       const slot = targetSlot ?? next.findIndex(u => u === null);
       if (slot === -1 || slot >= maxUnits) return prev;
-      next[slot] = { heroId, sphereIds: [null, null], skillOrders: [0, 1, 2] };
+      // スロットにすでに別ユニットがいる場合: スフィア・スキル順を引き継いで差し替え
+      const prev_unit = next[slot];
+      next[slot] = {
+        heroId,
+        sphereIds:   prev_unit ? [...prev_unit.sphereIds]   : [null, null],
+        skillOrders: prev_unit ? [...prev_unit.skillOrders] as [number,number,number] : [0, 1, 2],
+      };
       return next;
     });
     setUnitPickSlot(null);
@@ -1054,7 +1072,8 @@ export default function BattlePage() {
                         onSkillOrderChange={orders => updateSkillOrders(slotIdx, orders)}
                         reorderMode={reorderMode}
                         isReorderSelected={reorderFirstIdx === slotIdx}
-                        onReorderTap={() => handleReorderTap(slotIdx)} />
+                        onReorderTap={() => handleReorderTap(slotIdx)}
+                        onUnitReselect={() => { setUnitPickSlot(slotIdx); setActiveTab('units'); }} />
                     );
                   }
                   return (
