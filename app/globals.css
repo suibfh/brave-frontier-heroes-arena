@@ -1,28 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  /* Light Cyberpunk / Laboratory Palette */
   --cyber-white: #f8f9fa;
   --cyber-light: #e6e8eb;
   --cyber-dark: #1a1a1a;
-
-  /* High contrast accents for light theme */
-  --neon-cyan: #00acc1;
-  /* Darker cyan for visibility on white */
+  --neon-cyan: #1a1a1a;
   --neon-pink: #d81b60;
-  /* Darker pink */
   --neon-purple: #8e24aa;
-
   --background: var(--cyber-white);
   --foreground: var(--cyber-dark);
-
-  /* UI Colors */
   --card: 0 0% 100%;
   --card-foreground: 240 10% 3.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 3.9%;
   --primary: 180 100% 35%;
-  /* Darker cyan */
   --primary-foreground: 0 0% 98%;
   --secondary: 300 100% 35%;
   --secondary-foreground: 0 0% 98%;
@@ -51,147 +42,16 @@ body {
   font-family: 'Courier New', Courier, monospace;
   min-height: 100vh;
   overflow-x: hidden;
-  position: relative;
 }
 
-/* Scanline Effect - Subtler for light theme */
-body::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: repeating-linear-gradient(0deg,
-      rgba(0, 0, 0, 0.05),
-      rgba(0, 0, 0, 0.05) 1px,
-      transparent 1px,
-      transparent 2px);
-  pointer-events: none;
-  z-index: 9999;
-}
-
-/* Cyber Card - Light High Contrast */
 .cyber-card {
   background: #ffffff;
   border: 2px solid var(--cyber-dark);
-  /* Bold black border */
   box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.1);
-  /* Hard shadow */
   position: relative;
   overflow: hidden;
 }
 
-/* Animated scanner line */
-.cyber-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--neon-cyan);
-  animation: scan 3s linear infinite;
-  opacity: 0.5;
-}
-
-/* Glitch Utility */
-.glitch-text {
-  position: relative;
-  color: var(--foreground);
-  font-weight: 900;
-}
-
-.glitch-text::before,
-.glitch-text::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--background);
-  /* Matches white background to mask correctly */
-}
-
-.glitch-text::before {
-  left: 2px;
-  text-shadow: -1px 0 var(--neon-pink);
-  clip-path: inset(20% 0 30% 0);
-  animation: glitch-anim-1 2s infinite linear alternate-reverse;
-}
-
-.glitch-text::after {
-  left: -2px;
-  text-shadow: 2px 0 var(--neon-cyan);
-  clip-path: inset(50% 0 10% 0);
-  animation: glitch-anim-2 3s infinite linear alternate-reverse;
-}
-
-/* Animations */
-@keyframes scan {
-  0% {
-    transform: translateY(-100%);
-  }
-
-  100% {
-    transform: translateY(500px);
-  }
-}
-
-@keyframes glitch-anim-1 {
-  0% {
-    clip-path: inset(20% 0 30% 0);
-  }
-
-  20% {
-    clip-path: inset(60% 0 10% 0);
-  }
-
-  40% {
-    clip-path: inset(40% 0 50% 0);
-  }
-
-  60% {
-    clip-path: inset(80% 0 5% 0);
-  }
-
-  80% {
-    clip-path: inset(10% 0 70% 0);
-  }
-
-  100% {
-    clip-path: inset(30% 0 20% 0);
-  }
-}
-
-@keyframes glitch-anim-2 {
-  0% {
-    clip-path: inset(10% 0 60% 0);
-  }
-
-  20% {
-    clip-path: inset(30% 0 10% 0);
-  }
-
-  40% {
-    clip-path: inset(70% 0 20% 0);
-  }
-
-  60% {
-    clip-path: inset(20% 0 50% 0);
-  }
-
-  80% {
-    clip-path: inset(50% 0 30% 0);
-  }
-
-  100% {
-    clip-path: inset(5% 0 80% 0);
-  }
-}
-
-/* Button Styles - High Contrast */
 .cyber-button {
   background: #ffffff;
   color: var(--cyber-dark);
@@ -207,6 +67,4 @@ body::after {
 .cyber-button:hover {
   background: var(--cyber-dark);
   color: #ffffff;
-  box-shadow: 4px 4px 0px var(--neon-cyan);
-  transform: translate(-2px, -2px);
 }

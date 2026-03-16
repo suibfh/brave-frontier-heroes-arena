@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { saveClearRecord } from '@/src/lib/clearRecords';
 import { Card, CardContent } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
-import { ChevronLeft, Swords, Star, Trophy, Skull, Minus, ExternalLink, Search, X, Info, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, Swords, Star, Crown, Skull, Minus, ExternalLink, Search, X, Info, ArrowUp, ArrowDown } from 'lucide-react';
 import { STAGES } from '@/src/config/stages';
 import { useGetV1Me } from '@/src/api/generated/user/user';
 import { useGetV1MeUnits, useGetV1MeSpheres } from '@/src/api/generated/assets/assets';
@@ -1004,7 +1004,7 @@ export default function BattlePage() {
         <div className="max-w-md w-full space-y-6">
           <Card className="cyber-card border-2 border-neutral-900 text-center overflow-hidden">
             <div className={`p-8 ${isWin ? 'bg-yellow-50' : isDraw ? 'bg-neutral-100' : 'bg-red-50'}`}>
-              {isWin ? <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
+              {isWin ? <Crown className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
                : isDraw ? <Minus className="w-20 h-20 text-neutral-500 mx-auto mb-4" />
                : <Skull className="w-20 h-20 text-red-500 mx-auto mb-4" />}
               <h1 className={`text-5xl font-black uppercase tracking-widest ${isWin ? 'text-yellow-600' : isDraw ? 'text-neutral-600' : 'text-red-600'}`}>
