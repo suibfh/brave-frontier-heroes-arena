@@ -91,7 +91,7 @@ export default function StagesPage() {
           </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-neutral-900 uppercase tracking-tight flex items-center">
-              <Swords className="w-8 h-8 mr-2 text-red-600" />
+              <Swords className="w-8 h-8 mr-2 text-neutral-600" />
               Stage Select
             </h1>
             <p className="text-neutral-600 font-mono">挑戦するステージを選んでください</p>

@@ -136,7 +136,7 @@ export default function DashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
-                  <Swords className="w-6 h-6 mr-2 text-red-600" />
+                  <Swords className="w-6 h-6 mr-2 text-neutral-600" />
                   Battle Arena
                 </CardTitle>
                 <CardDescription className="text-neutral-500 font-mono mt-1">
@@ -151,7 +151,7 @@ export default function DashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
-                  <PersonStanding className="w-6 h-6 mr-2 text-purple-600" />
+                  <PersonStanding className="w-6 h-6 mr-2 text-neutral-600" />
                   My Units
                 </CardTitle>
                 <CardDescription className="text-neutral-500 font-mono mt-1">
@@ -166,7 +166,7 @@ export default function DashboardPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
-                  <Sword className="w-6 h-6 mr-2 text-blue-600" />
+                  <Sword className="w-6 h-6 mr-2 text-neutral-600" />
                   My Spheres
                 </CardTitle>
                 <CardDescription className="text-neutral-500 font-mono mt-1">

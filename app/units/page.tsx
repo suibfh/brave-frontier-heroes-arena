@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
-import { ChevronLeft, Grid } from 'lucide-react';
+import { ChevronLeft, PersonStanding } from 'lucide-react';
 import { CLIENT_ID, CLIENT_SECRET } from '@/src/config/env';
 import { redirect } from 'next/navigation';
 import { UnitCard } from '@/src/components/unit-card';
@@ -81,7 +81,7 @@ export default function UnitsPage() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-neutral-900 flex items-center uppercase tracking-tight">
-                <Grid className="w-8 h-8 mr-2 text-purple-600" />
+                <PersonStanding className="w-8 h-8 mr-2 text-neutral-600" />
                 My Units
               </h1>
               <p className="text-neutral-600 font-mono">
@@ -106,7 +106,7 @@ export default function UnitsPage() {
               <Button
                 onClick={() => router.push('/dashboard')}
                 variant="link"
-                className="text-purple-600 mt-4 font-bold uppercase"
+                className="text-neutral-700 mt-4 font-bold uppercase"
               >
                 Return to Dashboard
               </Button>
