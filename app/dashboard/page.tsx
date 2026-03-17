@@ -26,7 +26,6 @@ export default function DashboardPage() {
       uid: userDataRaw.user.uid as number,
       name: userDataRaw.user.name as string,
       eth: userDataRaw.user.eth as string,
-      ipfs: userDataRaw.user.ipfs as string | undefined,
       land_type: userDataRaw.user.land_type as number | undefined,
     }
   } : undefined;
@@ -120,12 +119,7 @@ export default function DashboardPage() {
                   {userData?.user?.eth || 'Not Connected'}
                 </div>
               </div>
-              {userData?.user?.ipfs && (
-                <div className="md:col-span-2">
-                  <div className="text-xs text-neutral-500 font-bold uppercase mb-1">IPFS</div>
-                  <div className="text-lg font-bold text-neutral-900 font-mono break-all">{userData.user.ipfs}</div>
-                </div>
-              )}
+
             </div>
           </CardContent>
         </Card>

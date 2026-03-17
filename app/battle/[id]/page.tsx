@@ -800,7 +800,8 @@ export default function BattlePage() {
     if (unitSearch) {
       const q = unitSearch.toLowerCase();
       const n = (unitMetaSnap[id]?.attributes?.type_name ?? heroGameMap[id]?.name ?? '').toLowerCase();
-      if (!n.includes(q) && !id.includes(q)) return false;
+      const bb = (unitMetaSnap[id]?.attributes?.brave_burst ?? '').toLowerCase();
+      if (!n.includes(q) && !bb.includes(q) && !id.includes(q)) return false;
     }
     const gd = heroGameMap[id];
     if (unitRarity && gd && UNIT_RARITY_MAP[gd.rarity] !== unitRarity) return false;
@@ -1230,7 +1231,7 @@ export default function BattlePage() {
             {/* 検索 */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-              <input type="text" placeholder="ユニット検索..." value={unitSearch} onChange={e => setUnitSearch(e.target.value)}
+              <input type="text" placeholder="名前 / BB名で検索..." value={unitSearch} onChange={e => setUnitSearch(e.target.value)}
                 className="w-full pl-8 pr-8 py-2 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:border-red-400 bg-white" />
               {unitSearch && <button onClick={() => setUnitSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2"><X className="w-3 h-3 text-neutral-400" /></button>}
             </div>
