@@ -4,7 +4,7 @@ import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/src/components/ui/button';
 // Removed generic Card import to use raw divs with new classes for cleaner control
-import { LogIn, Terminal } from 'lucide-react';
+import { LogIn, Bot } from 'lucide-react';
 import { BFH_AUTH_URL, CLIENT_ID, CLIENT_SECRET } from '@/src/config/env';
 import { redirect } from 'next/navigation';
 
@@ -70,12 +70,12 @@ function LoginForm() {
       <div className="w-full max-w-md cyber-card p-8">
         <div className="space-y-6 text-center">
           <div className="mx-auto w-20 h-20 flex items-center justify-center border-2 border-neutral-900 bg-white">
-            <Terminal className="w-10 h-10 text-neutral-900" />
+            <Bot className="w-10 h-10 text-neutral-900" />
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-neutral-900 tracking-widest uppercase glitch-text" data-text="BFH Sandbox">
-              BFH Sandbox
+            <h1 className="text-2xl font-bold text-neutral-900 tracking-widest uppercase glitch-text" data-text="Brave Frontier Heroes Arena">
+              Brave Frontier Heroes Arena
             </h1>
             <p className="text-neutral-500 font-mono text-xs tracking-wider">
               ACCESS RESTRICTED // AUTH REQUIRED
