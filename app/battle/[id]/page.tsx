@@ -1215,7 +1215,7 @@ export default function BattlePage() {
           <h1 className="text-sm font-black text-neutral-900 uppercase tracking-tight truncate">{stage.name}</h1>
         </div>
         <Button
-          className="!bg-red-700 hover:!bg-red-800 text-white font-black uppercase px-4 h-9 flex-shrink-0 disabled:opacity-40 text-xs"
+          className="!bg-red-700 hover:!bg-red-800 !text-white font-black uppercase px-4 h-9 flex-shrink-0 disabled:opacity-40 text-xs"
           disabled={selectedUnits.length === 0 || isBattling}
           onClick={handleBattle}
         >
