@@ -87,10 +87,10 @@ export default function DashboardPage() {
           <Button
             onClick={handleログアウト}
             variant="outline"
-            className="cyber-button border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white"
+            className="cyber-button border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white text-xs sm:text-sm px-2 sm:px-4"
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            ログアウト
+            <LogOut className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+            <span className="whitespace-nowrap">ログアウト</span>
           </Button>
         </div>
 
