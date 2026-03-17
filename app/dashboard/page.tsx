@@ -75,22 +75,22 @@ export default function DashboardPage() {
       <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="cyber-card rounded-xl p-6 flex items-center justify-between bg-white">
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-900 mb-2 uppercase tracking-tight">
+        <div className="cyber-card rounded-xl p-4 sm:p-6 flex items-center justify-between gap-3 bg-white">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-3xl font-bold text-neutral-900 mb-1 uppercase tracking-tight leading-tight">
               Brave Frontier Heroes Arena
             </h1>
-            <p className="text-neutral-600 font-mono">
+            <p className="text-sm text-neutral-600 font-mono truncate">
               ようこそ、{userData?.user?.name || 'Player'}!
             </p>
           </div>
           <Button
             onClick={handleログアウト}
             variant="outline"
-            className="cyber-button border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white text-xs sm:text-sm px-2 sm:px-4"
+            className="cyber-button border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white flex-shrink-0"
           >
-            <LogOut className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
-            <span className="whitespace-nowrap">ログアウト</span>
+            <LogOut className="w-4 h-4 mr-2" />
+            ログアウト
           </Button>
         </div>
 
