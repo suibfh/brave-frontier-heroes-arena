@@ -67,7 +67,7 @@ function LoginForm() {
         }}
       />
 
-      <div className="w-full max-w-md cyber-card p-8">
+      <div className="w-full max-w-md cyber-card rounded-xl p-8">
         <div className="space-y-6 text-center">
           <div className="mx-auto w-20 h-20 flex items-center justify-center border-2 border-neutral-900 bg-white">
             <Bot className="w-10 h-10 text-neutral-900" />
@@ -115,7 +115,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-md cyber-card p-8 text-center text-neutral-900 font-mono animate-pulse">
+        <div className="w-full max-w-md cyber-card rounded-xl p-8 text-center text-neutral-900 font-mono animate-pulse">
           INITIALIZING...
         </div>
       </div>
