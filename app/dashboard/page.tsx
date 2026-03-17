@@ -37,12 +37,12 @@ export default function DashboardPage() {
     }
   }, [userError, router]);
 
-  const handleLogout = async () => {
+  const handleログアウト = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
       router.push('/login');
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error('ログアウト failed:', err);
     }
   };
 
@@ -78,45 +78,45 @@ export default function DashboardPage() {
         <div className="cyber-card rounded-xl p-6 flex items-center justify-between bg-white">
           <div>
             <h1 className="text-3xl font-bold text-neutral-900 mb-2 uppercase tracking-tight">
-              Brave Frontier Heroes
+              Brave Frontier Heroes Arena
             </h1>
             <p className="text-neutral-600 font-mono">
-              Welcome back, {userData?.user?.name || 'Player'}!
+              ようこそ、{userData?.user?.name || 'Player'}!
             </p>
           </div>
           <Button
-            onClick={handleLogout}
+            onClick={handleログアウト}
             variant="outline"
             className="cyber-button border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Logout
+            ログアウト
           </Button>
         </div>
 
-        {/* Profile Information */}
+        {/* プロフィール情報 */}
         <Card className="cyber-card border-2 border-neutral-900">
           <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-4">
             <IdCard className="w-5 h-5 text-neutral-600" />
             <div>
-              <CardTitle className="text-neutral-900 font-bold uppercase tracking-tight">Profile Information</CardTitle>
-              <CardDescription className="text-neutral-500 font-mono">Your account details</CardDescription>
+              <CardTitle className="text-neutral-900 font-bold uppercase tracking-tight">プロフィール情報</CardTitle>
+              <CardDescription className="text-neutral-500 font-mono">アカウントの詳細</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div className="text-xs text-neutral-500 font-bold uppercase mb-1">Name</div>
+                <div className="text-xs text-neutral-500 font-bold uppercase mb-1">プレイヤーネーム</div>
                 <div className="text-lg font-bold text-neutral-900">{userData?.user?.name || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-xs text-neutral-500 font-bold uppercase mb-1">User ID</div>
+                <div className="text-xs text-neutral-500 font-bold uppercase mb-1">ブレヒロ ID</div>
                 <div className="text-lg font-bold text-neutral-900 font-mono">{userData?.user?.uid || 'N/A'}</div>
               </div>
               <div className="md:col-span-2">
-                <div className="text-xs text-neutral-500 font-bold uppercase mb-1">Wallet Address</div>
+                <div className="text-xs text-neutral-500 font-bold uppercase mb-1">ウォレットアドレス</div>
                 <div className="text-lg font-bold text-neutral-900 font-mono break-all">
-                  {userData?.user?.eth || 'Not Connected'}
+                  {userData?.user?.eth || '未接続'}
                 </div>
               </div>
 
@@ -146,10 +146,10 @@ export default function DashboardPage() {
               <div>
                 <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
                   <PersonStanding className="w-6 h-6 mr-2 text-neutral-600" />
-                  My Units
+                  ユニット一覧
                 </CardTitle>
                 <CardDescription className="text-neutral-500 font-mono mt-1">
-                  View and manage your hero units
+                  ユニットを表示する
                 </CardDescription>
               </div>
               <ExternalLink className="w-5 h-5 text-neutral-400" />
@@ -161,10 +161,10 @@ export default function DashboardPage() {
               <div>
                 <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
                   <Sword className="w-6 h-6 mr-2 text-neutral-600" />
-                  My Spheres
+                  スフィア一覧
                 </CardTitle>
                 <CardDescription className="text-neutral-500 font-mono mt-1">
-                  View and manage your spheres
+                  スフィアを表示する
                 </CardDescription>
               </div>
               <ExternalLink className="w-5 h-5 text-neutral-400" />
