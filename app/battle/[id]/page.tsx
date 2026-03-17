@@ -79,6 +79,7 @@ type BattleResult = {
   battle_key: string;
   attacker_taken_damage: number;
   defender_taken_damage: number;
+  action_counts: number;
   player_name: string;
   opponent_name: string;
 };
@@ -936,6 +937,7 @@ export default function BattlePage() {
           battle_key: res?.battle_key ?? '',
           attacker_taken_damage: res?.attacker_taken_damage ?? 0,
           defender_taken_damage: res?.defender_taken_damage ?? 0,
+          action_counts: res?.action_counts ?? 0,
           player_name: res?.player_name ?? '',
           opponent_name: res?.opponent_name ?? '',
         });
@@ -1118,7 +1120,7 @@ export default function BattlePage() {
               <p className="text-neutral-500 font-mono mt-2">Stage {stage.id} — {stage.name}</p>
             </div>
             <CardContent className="pt-6 space-y-4 bg-white">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-3 gap-3 text-sm">
                 <div className="text-center">
                   <p className="text-neutral-400 font-bold uppercase text-xs mb-1">受けたダメージ</p>
                   <p className="text-2xl font-black font-mono text-red-600">{(battleResult.attacker_taken_damage ?? 0).toLocaleString()}</p>
@@ -1126,6 +1128,10 @@ export default function BattlePage() {
                 <div className="text-center">
                   <p className="text-neutral-400 font-bold uppercase text-xs mb-1">与えたダメージ</p>
                   <p className="text-2xl font-black font-mono text-green-600">{(battleResult.defender_taken_damage ?? 0).toLocaleString()}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-neutral-400 font-bold uppercase text-xs mb-1">アクション数</p>
+                  <p className="text-2xl font-black font-mono text-neutral-700">{battleResult.action_counts}</p>
                 </div>
               </div>
               {replayUrl && (
