@@ -21,7 +21,7 @@ export default function Home() {
           className="text-6xl md:text-9xl font-black tracking-tighter glitch-text select-none text-neutral-900"
           data-text="BFH ARENA"
         >
-          BFH SANDBOX
+          BFH ARENA
         </h1>
 
         <p className="text-xl md:text-2xl font-mono tracking-widest opacity-80 uppercase text-neutral-600">
