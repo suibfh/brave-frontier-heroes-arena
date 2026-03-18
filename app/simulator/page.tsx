@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import {
   ChevronLeft, Swords, Crown, Skull, Minus,
-  ExternalLink, Search, X, Users, Sword, Shield,
+  ExternalLink, Search, X, Sword, Shield, Copy, Check,
 } from 'lucide-react';
 import { useGetV1Me } from '@/src/api/generated/user/user';
 import { useGetV1MeUnits, useGetV1MeSpheres } from '@/src/api/generated/assets/assets';
@@ -80,13 +80,13 @@ function SimDeckCard({ deck, label, onLoadAlly, onLoadEnemy }: SimDeckCardProps)
           onClick={() => onLoadAlly(deck)}
           className="flex-1 flex items-center justify-center gap-1 text-[10px] font-black py-1.5 rounded-lg border-2 border-blue-400 text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
         >
-          <Users className="w-3 h-3" />味方に反映
+          <Sword className="w-3 h-3" />味方に反映
         </button>
         <button
           onClick={() => onLoadEnemy(deck)}
           className="flex-1 flex items-center justify-center gap-1 text-[10px] font-black py-1.5 rounded-lg border-2 border-red-400 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
         >
-          <Sword className="w-3 h-3" />敵に反映
+          <Shield className="w-3 h-3" />敵に反映
         </button>
       </div>
     </div>
@@ -378,6 +378,7 @@ export default function SimulatorPage() {
   // ---- バトル状態 ----
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null);
   const [battleError,  setBattleError]  = useState<string | null>(null);
+  const [urlCopied,    setUrlCopied]    = useState(false);
 
   // ---- キャッシュスナップ（検索用） ----
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -602,20 +603,42 @@ export default function SimulatorPage() {
                   <p className="text-2xl font-black font-mono text-neutral-700">{battleResult.action_counts}</p>
                 </div>
               </div>
+              {/* 戦闘URL ボタン群 */}
               {replayUrl && (
-                <a href={replayUrl} target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full bg-neutral-900 text-white hover:bg-blue-700 font-bold uppercase">
-                    <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
+                <div className="space-y-2">
+                  {/* 戦闘を見る */}
+                  <a href={replayUrl} target="_blank" rel="noopener noreferrer">
+                    <Button className="w-full bg-neutral-900 text-white hover:bg-neutral-700 font-bold uppercase">
+                      <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
+                    </Button>
+                  </a>
+                  {/* URLコピー */}
+                  <Button
+                    variant="outline"
+                    className={`w-full font-bold uppercase transition-colors ${
+                      urlCopied
+                        ? 'border-green-500 text-green-600 bg-green-50 hover:bg-green-50'
+                        : 'border-neutral-300 text-neutral-600 hover:border-neutral-500'
+                    }`}
+                    onClick={() => {
+                      navigator.clipboard.writeText(replayUrl).then(() => {
+                        setUrlCopied(true);
+                        setTimeout(() => setUrlCopied(false), 2500);
+                      });
+                    }}
+                  >
+                    {urlCopied
+                      ? <><Check className="w-4 h-4 mr-2" />コピーしました</>
+                      : <><Copy className="w-4 h-4 mr-2" />戦闘URLをコピー</>}
                   </Button>
-                </a>
+                </div>
               )}
-              <Button variant="outline" className="w-full border-neutral-900 font-bold uppercase"
-                onClick={() => setBattleResult(null)}>
-                もう一度
-              </Button>
-              <Button variant="ghost" className="w-full font-bold uppercase text-neutral-500"
-                onClick={() => router.push('/dashboard')}>
-                ダッシュボードに戻る
+              {/* 編成に戻る */}
+              <Button
+                className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold uppercase mt-2"
+                onClick={() => setBattleResult(null)}
+              >
+                編成画面に戻る
               </Button>
             </CardContent>
           </Card>
