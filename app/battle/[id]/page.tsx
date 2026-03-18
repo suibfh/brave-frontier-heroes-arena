@@ -415,11 +415,12 @@ export default function BattlePage() {
                 </div>
               </div>
               {replayUrl && (
-                <a href={replayUrl} target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full bg-neutral-900 text-white hover:bg-blue-700 font-bold uppercase">
-                    <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
-                  </Button>
-                </a>
+                <Button
+                  className="w-full bg-neutral-900 text-white hover:bg-blue-700 font-bold uppercase"
+                  onClick={() => window.open(replayUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
+                </Button>
               )}
               <Button variant="outline" className="w-full border-neutral-900 font-bold uppercase" onClick={() => setBattleResult(null)}>
                 もう一度挑戦

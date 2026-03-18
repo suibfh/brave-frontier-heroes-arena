@@ -607,11 +607,12 @@ export default function SimulatorPage() {
               {replayUrl && (
                 <div className="flex flex-col gap-2">
                   {/* 戦闘を見る */}
-                  <a href={replayUrl} target="_blank" rel="noopener noreferrer" className="block">
-                    <Button className="w-full bg-neutral-900 text-white hover:bg-neutral-700 font-bold uppercase">
-                      <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
-                    </Button>
-                  </a>
+                  <Button
+                    className="w-full bg-neutral-900 text-white hover:bg-neutral-700 font-bold uppercase"
+                    onClick={() => window.open(replayUrl, '_blank', 'noopener,noreferrer')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
+                  </Button>
                   {/* URLコピー */}
                   <Button
                     variant="outline"
