@@ -193,6 +193,10 @@ export default function BattlePage() {
     if (unitRarity && gd && UNIT_RARITY_MAP[gd.rarity] !== unitRarity) return false;
     if (unitAttr  && gd && gd.attribute !== unitAttr) return false;
     return true;
+  }).sort((a, b) => {
+    const ra = heroGameMap[a]?.rarity ?? 0;
+    const rb = heroGameMap[b]?.rarity ?? 0;
+    return rb - ra; // レアリティ高い順
   });
 
   const filteredSpheres = (sphereListData?.spheres ?? []).filter(id => {
@@ -206,6 +210,10 @@ export default function BattlePage() {
       if (gd && SPHERE_RARITY_MAP[gd.rarity] !== sphereRarity) return false;
     }
     return true;
+  }).sort((a, b) => {
+    const ra = sphereGameMap[a]?.rarity ?? 0;
+    const rb = sphereGameMap[b]?.rarity ?? 0;
+    return rb - ra; // レアリティ高い順
   });
 
   // ---- バトルシミュレーション ----
