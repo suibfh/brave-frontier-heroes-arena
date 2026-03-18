@@ -36,12 +36,16 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
+  /* overflow-x: hidden をbodyに置くとChromeでoverflow-yが阻害されるため削除 */
 }
 
 .cyber-card {

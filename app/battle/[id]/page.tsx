@@ -564,12 +564,12 @@ export default function BattlePage() {
         ))}
       </div>
 
-      {/* 4カラム */}
-      <div className="flex-1 min-h-0 lg:grid lg:grid-cols-[260px_1fr_1fr_220px] lg:overflow-hidden lg:min-h-0">
+      {/* 4カラム — PCは固定高さグリッド、各カラム内でスクロール */}
+      <div className="flex-1 min-h-0 lg:grid lg:grid-cols-[260px_1fr_1fr_220px] overflow-hidden">
 
         {/* ── パーティ ── */}
-        <div className={`lg:flex lg:flex-col lg:border-r-2 border-neutral-200 lg:min-h-0 ${activeTab !== 'party' ? 'hidden lg:flex' : ''}`}>
-          <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 p-3 space-y-2">
+        <div className={`flex flex-col border-r-2 border-neutral-200 min-h-0 overflow-hidden ${activeTab !== 'party' ? 'hidden lg:flex' : ''}`}>
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">
                 パーティ ({selectedUnits.length}/{maxUnits})
@@ -626,8 +626,8 @@ export default function BattlePage() {
         </div>
 
         {/* ── ユニット一覧 ── */}
-        <div className={`lg:flex lg:flex-col lg:border-r-2 border-neutral-200 lg:min-h-0 ${activeTab !== 'units' ? 'hidden lg:flex' : ''}`}>
-          <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 p-3 space-y-2">
+        <div className={`flex flex-col border-r-2 border-neutral-200 min-h-0 overflow-hidden ${activeTab !== 'units' ? 'hidden lg:flex' : ''}`}>
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input type="text" placeholder="名前 / BB名で検索..." value={unitSearch}
@@ -697,8 +697,8 @@ export default function BattlePage() {
         </div>
 
         {/* ── スフィア一覧 ── */}
-        <div className={`lg:flex lg:flex-col lg:min-h-0 ${activeTab !== 'spheres' ? 'hidden lg:flex' : ''}`}>
-          <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 p-3 space-y-2">
+        <div className={`flex flex-col border-r-2 border-neutral-200 min-h-0 overflow-hidden ${activeTab !== 'spheres' ? 'hidden lg:flex' : ''}`}>
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
               <input type="text" placeholder="スフィア検索..." value={sphereSearch}
@@ -736,8 +736,8 @@ export default function BattlePage() {
         </div>
 
         {/* ── デッキテンプレート ── */}
-        <div className={`lg:flex lg:flex-col lg:border-l-2 border-neutral-200 lg:min-h-0 ${activeTab !== 'decks' ? 'hidden lg:flex' : ''}`}>
-          <div className="lg:flex-1 lg:overflow-y-auto lg:min-h-0 p-3 space-y-2">
+        <div className={`flex flex-col border-l-2 border-neutral-200 min-h-0 overflow-hidden ${activeTab !== 'decks' ? 'hidden lg:flex' : ''}`}>
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
             <p className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">パーティ一覧</p>
             <p className="text-[9px] text-neutral-400 font-mono">読み込むと編成に反映されます</p>
             {isLoadingDecks ? (
