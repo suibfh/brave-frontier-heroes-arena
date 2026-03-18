@@ -32,25 +32,6 @@ import { toFastUnitImageUrl, getSphereImageUrl } from '@/src/lib/battle/imageUrl
 // ============================================================
 // シミュレータ用デッキカード（味方/敵反映ボタン付き）
 // ============================================================
-// ---- スフィアメタデータキャッシュ（SBTスフィアのフォールバック用） ----
-const sphereMetaImageCache: Record<string, string | null> = {};
-const sphereMetaFetching = new Set<string>();
-
-function fetchSphereMetaImage(sphereId: string, cb: (url: string | null) => void): void {
-  if (sphereId in sphereMetaImageCache) { cb(sphereMetaImageCache[sphereId]); return; }
-  if (sphereMetaFetching.has(sphereId)) return;
-  sphereMetaFetching.add(sphereId);
-  fetch(`/api/sphere/metadata/${sphereId}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(d => {
-      const url: string | null = d?.image ?? null;
-      sphereMetaImageCache[sphereId] = url;
-      cb(url);
-    })
-    .catch(() => { sphereMetaImageCache[sphereId] = null; cb(null); })
-    .finally(() => sphereMetaFetching.delete(sphereId));
-}
-
 function SimDeckUnitIcon({ heroId }: { heroId: string }) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -74,33 +55,16 @@ function SimDeckUnitIcon({ heroId }: { heroId: string }) {
 }
 
 // ---- SimDeckSphereIcon ----
-function SimDeckSphereIcon({ sphereId, sphereData }: {
-  sphereId: string | null;
-  sphereData: SphereGameData | null;
-}) {
-  const directUrl = sphereData ? getSphereImageUrl(sphereData) : null;
-  const [fallbackUrl, setFallbackUrl] = useState<string | null>(
-    directUrl ? null : (sphereId && sphereId in sphereMetaImageCache ? sphereMetaImageCache[sphereId] : null)
-  );
-
-  useEffect(() => {
-    if (directUrl || !sphereId) return;
-    if (sphereId in sphereMetaImageCache) { setFallbackUrl(sphereMetaImageCache[sphereId]); return; }
-    fetchSphereMetaImage(sphereId, url => setFallbackUrl(url));
-  }, [sphereId, directUrl]);
-
-  const url = directUrl ?? fallbackUrl;
-
-  if (!sphereData && !sphereId) {
+function SimDeckSphereIcon({ sphereData }: { sphereData: SphereGameData | null }) {
+  if (!sphereData) {
     return <div className="w-6 h-6 rounded border border-dashed border-neutral-200 bg-neutral-50 flex-shrink-0" />;
   }
+  const url = getSphereImageUrl(sphereData);
   return (
     <div className="w-6 h-6 rounded overflow-hidden bg-neutral-100 flex-shrink-0 border border-neutral-200">
       {url
         ? <img src={url} alt="" className="w-full h-full object-contain p-px" />
-        : <div className="w-full h-full bg-neutral-100 flex items-center justify-center">
-            <span className="text-[6px] text-neutral-300 font-mono leading-none">?</span>
-          </div>}
+        : <div className="w-full h-full animate-pulse bg-neutral-200" />}
     </div>
   );
 }
@@ -135,11 +99,7 @@ function SimDeckCard({ deck, label, sphereGameMap, onLoadAlly, onLoadEnemy }: Si
               {hasAnySphere && (
                 <div className="flex gap-0.5">
                   {spheres.map((s, si) => (
-                    <SimDeckSphereIcon
-                      key={si}
-                      sphereId={s ? String(u.extension_ids[si]) : null}
-                      sphereData={s}
-                    />
+                    <SimDeckSphereIcon key={si} sphereData={s} />
                   ))}
                 </div>
               )}
@@ -407,6 +367,33 @@ export default function SimulatorPage() {
     ];
     return [...new Set(allDecks.flatMap(d => d.units.map(u => String(u.hero_id))))];
   }, [deckData]);
+
+  // ---- デッキ内スフィアのプリフェッチ ----
+  const allDeckSphereIds = useMemo(() => {
+    const allDecks: DeckTemplate[] = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...((deckData as any)?.deck_templates ?? []),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...((deckData as any)?.quest_deck_templates ?? []),
+    ];
+    return [...new Set(
+      allDecks.flatMap(d => d.units.flatMap(u => u.extension_ids))
+        .filter((id): id is number => !!id && id !== 0)
+        .map(String)
+    )];
+  }, [deckData]);
+
+  const deckSphereFetchedRef = useRef(false);
+  useEffect(() => {
+    if (deckSphereFetchedRef.current || allDeckSphereIds.length === 0) return;
+    // まだ sphereGameMap にないIDだけ fetch する
+    const missing = allDeckSphereIds.filter(id => !sphereGameMap[id]);
+    if (missing.length === 0) return;
+    deckSphereFetchedRef.current = true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fetchSphereGameData({ data: { sphere_ids: missing.map(Number) } } as any);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDeckSphereIds]);
 
   useEffect(() => {
     if (allDeckHeroIds.length === 0) return;

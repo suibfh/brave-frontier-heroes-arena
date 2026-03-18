@@ -132,6 +132,33 @@ export default function BattlePage() {
     return [...new Set(allDecks.flatMap(d => d.units.map(u => String(u.hero_id))))];
   }, [deckData]);
 
+  // ---- デッキ内スフィアのプリフェッチ ----
+  const allDeckSphereIds = useMemo(() => {
+    const allDecks: DeckTemplate[] = [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...((deckData as any)?.deck_templates ?? []),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...((deckData as any)?.quest_deck_templates ?? []),
+    ];
+    return [...new Set(
+      allDecks.flatMap(d => d.units.flatMap(u => u.extension_ids))
+        .filter((id): id is number => !!id && id !== 0)
+        .map(String)
+    )];
+  }, [deckData]);
+
+  const deckSphereFetchedRef = useRef(false);
+  useEffect(() => {
+    if (deckSphereFetchedRef.current || allDeckSphereIds.length === 0) return;
+    // まだ sphereGameMap にないIDだけ fetch する
+    const missing = allDeckSphereIds.filter(id => !sphereGameMap[id]);
+    if (missing.length === 0) return;
+    deckSphereFetchedRef.current = true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fetchSphereGameData({ data: { sphere_ids: missing.map(Number) } } as any);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDeckSphereIds]);
+
   useEffect(() => {
     if (allDeckHeroIds.length === 0) return;
     let idx = 0;

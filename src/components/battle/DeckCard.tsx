@@ -5,25 +5,6 @@ import type { DeckTemplate, SphereGameData } from '@/src/types/battle';
 import { heroMetaCache, fetchHeroMeta } from '@/src/lib/battle/cache';
 import { toFastUnitImageUrl, getSphereImageUrl } from '@/src/lib/battle/imageUrl';
 
-// ---- スフィアメタデータキャッシュ（SBTスフィアのフォールバック用） ----
-// extension_type がないスフィアは /api/sphere/metadata/[id] から image を取得する
-const sphereMetaImageCache: Record<string, string | null> = {};
-const sphereMetaFetching = new Set<string>();
-
-function fetchSphereMetaImage(sphereId: string, cb: (url: string | null) => void): void {
-  if (sphereId in sphereMetaImageCache) { cb(sphereMetaImageCache[sphereId]); return; }
-  if (sphereMetaFetching.has(sphereId)) return;
-  sphereMetaFetching.add(sphereId);
-  fetch(`/api/sphere/metadata/${sphereId}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(d => {
-      const url: string | null = d?.image ?? null;
-      sphereMetaImageCache[sphereId] = url;
-      cb(url);
-    })
-    .catch(() => { sphereMetaImageCache[sphereId] = null; cb(null); })
-    .finally(() => sphereMetaFetching.delete(sphereId));
-}
 
 // ---- DeckUnitIcon ----
 function DeckUnitIcon({ heroId }: { heroId: string }) {
@@ -50,28 +31,13 @@ function DeckUnitIcon({ heroId }: { heroId: string }) {
 }
 
 // ---- DeckSphereIcon ----
-// extension_type がある通常スフィア → getSphereImageUrl() で即表示
-// ない SBTスフィア → /api/sphere/metadata/[id] の image フィールドにフォールバック
-function DeckSphereIcon({ sphereId, sphereData }: { sphereId: string; sphereData: SphereGameData }) {
-  const directUrl = getSphereImageUrl(sphereData);
-  const [fallbackUrl, setFallbackUrl] = useState<string | null>(
-    directUrl ? null : (sphereMetaImageCache[sphereId] ?? null)
-  );
-
-  useEffect(() => {
-    if (directUrl) return; // extension_type あり → フォールバック不要
-    if (sphereId in sphereMetaImageCache) { setFallbackUrl(sphereMetaImageCache[sphereId]); return; }
-    fetchSphereMetaImage(sphereId, url => setFallbackUrl(url));
-  }, [sphereId, directUrl]);
-
-  const url = directUrl ?? fallbackUrl;
+function DeckSphereIcon({ sphereData }: { sphereData: SphereGameData }) {
+  const url = getSphereImageUrl(sphereData);
   return (
     <div className="w-6 h-6 rounded overflow-hidden bg-neutral-100 flex-shrink-0 border border-neutral-200">
       {url
         ? <img src={url} alt="" className="w-full h-full object-contain p-px" />
-        : <div className="w-full h-full bg-neutral-100 border border-dashed border-neutral-300 flex items-center justify-center">
-            <span className="text-[6px] text-neutral-300 font-mono leading-none">?</span>
-          </div>}
+        : <div className="w-full h-full animate-pulse bg-neutral-200" />}
     </div>
   );
 }
@@ -112,7 +78,7 @@ export function DeckCard({ deck, label, sphereGameMap, onLoad }: DeckCardProps) 
                 <div className="flex gap-0.5">
                   {spheres.map((s, si) =>
                     s ? (
-                      <DeckSphereIcon key={si} sphereId={String(u.extension_ids[si])} sphereData={s} />
+                      <DeckSphereIcon key={si} sphereData={s} />
                     ) : (
                       <div key={si} className="w-6 h-6 rounded border border-dashed border-neutral-200 bg-neutral-50 flex-shrink-0" />
                     )
