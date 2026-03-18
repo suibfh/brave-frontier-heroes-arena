@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
-import { LogOut, IdCard, Swords, PersonStanding, Sword, ExternalLink } from 'lucide-react';
+import { LogOut, IdCard, Swords, ExternalLink } from 'lucide-react';
 import { CLIENT_ID, CLIENT_SECRET } from '@/src/config/env';
 import { redirect } from 'next/navigation';
 import { useGetV1Me } from '@/src/api/generated/user/user';
@@ -125,53 +125,8 @@ export default function DashboardPage() {
         </Card>
 
         {/* Navigation Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="cyber-card border-2 border-red-600 cursor-pointer hover:bg-red-50 transition-colors md:col-span-2" onClick={() => router.push('/stages')}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
-                  <Swords className="w-6 h-6 mr-2 text-neutral-600" />
-                  Battle Arena
-                </CardTitle>
-                <CardDescription className="text-neutral-500 font-mono mt-1">
-                  ステージを選んでバトルに挑戦！
-                </CardDescription>
-              </div>
-              <ExternalLink className="w-5 h-5 text-neutral-400" />
-            </CardHeader>
-          </Card>
-
-          <Card className="cyber-card border-2 border-neutral-900 cursor-pointer hover:bg-neutral-50 transition-colors" onClick={() => router.push('/units')}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
-                  <PersonStanding className="w-6 h-6 mr-2 text-neutral-600" />
-                  ユニット一覧
-                </CardTitle>
-                <CardDescription className="text-neutral-500 font-mono mt-1">
-                  ユニットを表示する
-                </CardDescription>
-              </div>
-              <ExternalLink className="w-5 h-5 text-neutral-400" />
-            </CardHeader>
-          </Card>
-
-          <Card className="cyber-card border-2 border-neutral-900 cursor-pointer hover:bg-neutral-50 transition-colors" onClick={() => router.push('/spheres')}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
-                  <Sword className="w-6 h-6 mr-2 text-neutral-600" />
-                  スフィア一覧
-                </CardTitle>
-                <CardDescription className="text-neutral-500 font-mono mt-1">
-                  スフィアを表示する
-                </CardDescription>
-              </div>
-              <ExternalLink className="w-5 h-5 text-neutral-400" />
-            </CardHeader>
-          </Card>
-
-          <Card className="cyber-card border-2 border-violet-600 cursor-pointer hover:bg-violet-50 transition-colors md:col-span-2" onClick={() => router.push('/simulator')}>
+        <div className="grid grid-cols-1 gap-4">
+          <Card className="cyber-card border-2 border-violet-600 cursor-pointer hover:bg-violet-50 transition-colors" onClick={() => router.push('/simulator')}>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
@@ -180,6 +135,21 @@ export default function DashboardPage() {
                 </CardTitle>
                 <CardDescription className="text-neutral-500 font-mono mt-1">
                   テンプレパーティバトルシミュレータ
+                </CardDescription>
+              </div>
+              <ExternalLink className="w-5 h-5 text-neutral-400" />
+            </CardHeader>
+          </Card>
+
+          <Card className="cyber-card border-2 border-red-600 cursor-pointer hover:bg-red-50 transition-colors" onClick={() => router.push('/stages')}>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
+                  <Swords className="w-6 h-6 mr-2 text-neutral-600" />
+                  バトルアリーナ
+                </CardTitle>
+                <CardDescription className="text-neutral-500 font-mono mt-1">
+                  ステージを選んでバトルに挑戦！
                 </CardDescription>
               </div>
               <ExternalLink className="w-5 h-5 text-neutral-400" />
