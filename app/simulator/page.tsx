@@ -607,20 +607,19 @@ export default function SimulatorPage() {
               {replayUrl && (
                 <div className="flex flex-col gap-2">
                   {/* 戦闘を見る */}
-                  <Button
-                    className="w-full bg-neutral-900 text-white hover:bg-neutral-700 font-bold uppercase"
+                  <button
+                    style={{ backgroundColor: '#171717', color: '#ffffff' }}
+                    className="w-full inline-flex items-center justify-center h-9 px-4 rounded-md text-sm font-bold uppercase hover:opacity-90 transition-opacity"
                     onClick={() => window.open(replayUrl, '_blank', 'noopener,noreferrer')}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
-                  </Button>
+                  </button>
                   {/* URLコピー */}
-                  <Button
-                    variant="outline"
-                    className={`w-full font-bold uppercase transition-colors ${
-                      urlCopied
-                        ? 'border-green-500 text-green-600 bg-green-50 hover:bg-green-50'
-                        : 'border-neutral-300 text-neutral-600 hover:border-neutral-500'
-                    }`}
+                  <button
+                    style={urlCopied
+                      ? { backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #22c55e' }
+                      : { backgroundColor: '#ffffff', color: '#525252', border: '1px solid #d4d4d4' }}
+                    className="w-full inline-flex items-center justify-center h-9 px-4 rounded-md text-sm font-bold uppercase transition-colors"
                     onClick={() => {
                       navigator.clipboard.writeText(replayUrl).then(() => {
                         setUrlCopied(true);
@@ -631,7 +630,7 @@ export default function SimulatorPage() {
                     {urlCopied
                       ? <><Check className="w-4 h-4 mr-2" />コピーしました</>
                       : <><Copy className="w-4 h-4 mr-2" />戦闘URLをコピー</>}
-                  </Button>
+                  </button>
                 </div>
               )}
               {/* 編成に戻る */}
