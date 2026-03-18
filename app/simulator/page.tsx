@@ -605,9 +605,9 @@ export default function SimulatorPage() {
               </div>
               {/* 戦闘URL ボタン群 */}
               {replayUrl && (
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   {/* 戦闘を見る */}
-                  <a href={replayUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={replayUrl} target="_blank" rel="noopener noreferrer" className="block">
                     <Button className="w-full bg-neutral-900 text-white hover:bg-neutral-700 font-bold uppercase">
                       <ExternalLink className="w-4 h-4 mr-2" />戦闘を見る
                     </Button>
@@ -635,7 +635,8 @@ export default function SimulatorPage() {
               )}
               {/* 編成に戻る */}
               <Button
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold uppercase mt-2"
+                variant="ghost"
+                className="w-full font-bold uppercase text-neutral-500 hover:text-neutral-700 mt-1"
                 onClick={() => setBattleResult(null)}
               >
                 編成画面に戻る
