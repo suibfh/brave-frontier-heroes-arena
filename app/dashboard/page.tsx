@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
@@ -8,6 +8,73 @@ import { LogOut, IdCard, Swords, ExternalLink } from 'lucide-react';
 import { CLIENT_ID, CLIENT_SECRET } from '@/src/config/env';
 import { redirect } from 'next/navigation';
 import { useGetV1Me } from '@/src/api/generated/user/user';
+
+// ---- BFHA NFT セクション ----
+interface NFTMeta { tokenId: number; name: string; image: string; }
+interface BFHAData { balance: number; nfts: NFTMeta[]; }
+
+function BFHASection({ address }: { address: string }) {
+  const [data, setData]       = useState<BFHAData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!address) return;
+    fetch(`/api/bfha?address=${address}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [address]);
+
+  if (loading) {
+    return (
+      <div className="md:col-span-2 pt-2 border-t border-neutral-100">
+        <div className="text-xs text-neutral-500 font-bold uppercase mb-2">
+          Brush Field Home Atelier (BFHA)
+        </div>
+        <div className="flex gap-2">
+          {[0, 1].map(i => (
+            <div key={i} className="w-10 h-10 rounded-lg bg-neutral-100 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!data || data.balance === 0) {
+    return (
+      <div className="md:col-span-2 pt-2 border-t border-neutral-100">
+        <div className="text-xs text-neutral-500 font-bold uppercase mb-1">
+          Brush Field Home Atelier (BFHA)
+        </div>
+        <div className="text-sm text-neutral-400 font-mono">未所持</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="md:col-span-2 pt-2 border-t border-neutral-100">
+      <div className="text-xs text-neutral-500 font-bold uppercase mb-2">
+        Brush Field Home Atelier (BFHA)
+        <span className="ml-2 text-neutral-400 font-mono normal-case">{data.balance}点所持</span>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        {data.nfts.map(nft => (
+          <div key={nft.tokenId} className="flex flex-col items-center gap-0.5 group">
+            <div className="w-10 h-10 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-50 flex-shrink-0">
+              {nft.image
+                ? <img src={nft.image} alt={nft.name} className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                : <div className="w-full h-full bg-neutral-100" />}
+            </div>
+            <span className="text-[8px] font-mono text-neutral-400 max-w-[40px] truncate opacity-0 group-hover:opacity-100 transition-opacity">
+              {nft.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -120,6 +187,9 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {userData?.user?.eth && (
+                <BFHASection address={userData.user.eth as string} />
+              )}
             </div>
           </CardContent>
         </Card>
