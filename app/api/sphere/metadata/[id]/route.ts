@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// インメモリキャッシュ
-const metadataCache = new Map<string, { data: any; timestamp: number }>();
+// インメモリキャッシュ（同一実行環境が再利用された場合の補助）
+const metadataCache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 3600 * 1000; // 1時間
+
+// NFTメタデータは基本不変のため、CDN側に24時間キャッシュさせる
+const CDN_CACHE_HEADERS = {
+  'Vercel-CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+  'Cache-Control': 's-maxage=86400, stale-while-revalidate=604800',
+};
 
 export async function GET(
   request: NextRequest,
@@ -14,14 +20,13 @@ export async function GET(
     return NextResponse.json({ error: 'ID is required' }, { status: 400 });
   }
 
-  // キャッシュチェック
+  // インメモリキャッシュチェック（補助）
   const cached = metadataCache.get(id);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return NextResponse.json(cached.data);
+    return NextResponse.json(cached.data, { headers: CDN_CACHE_HEADERS });
   }
 
   try {
-    // スフィアのメタデータURL
     const url = `https://core.bravefrontierheroes.com/metadata/spheres/${id}`;
     const response = await fetch(url);
 
@@ -31,10 +36,9 @@ export async function GET(
 
     const data = await response.json();
 
-    // キャッシュに保存
     metadataCache.set(id, { data, timestamp: Date.now() });
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: CDN_CACHE_HEADERS });
   } catch (error) {
     console.error(`Error fetching metadata for sphere ${id}:`, error);
     return NextResponse.json(
