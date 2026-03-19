@@ -72,6 +72,12 @@ function BFHASection({ address }: { address: string }) {
           </div>
         ))}
       </div>
+
+      {/* 注意書き */}
+      <p className="text-[11px] text-neutral-400 font-mono text-center pt-2 pb-6">
+        ブレヒロメンテナンス中は一部機能が利用できない場合があります。時間をおいて再アクセスしてください。
+      </p>
+
     </div>
   );
 }
@@ -165,10 +171,7 @@ export default function DashboardPage() {
         <Card className="cyber-card border-2 border-neutral-900">
           <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-4">
             <IdCard className="w-5 h-5 text-neutral-600" />
-            <div>
-              <CardTitle className="text-neutral-900 font-bold uppercase tracking-tight">プロフィール情報</CardTitle>
-              <CardDescription className="text-neutral-500 font-mono">アカウントの詳細</CardDescription>
-            </div>
+            <CardTitle className="text-neutral-900 font-bold uppercase tracking-tight">プロフィール情報</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -228,6 +231,12 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      {/* 注意書き */}
+      <p className="text-[11px] text-neutral-400 font-mono text-center pt-2 pb-6">
+        ブレヒロメンテナンス中は一部機能が利用できない場合があります。時間をおいて再アクセスしてください。
+      </p>
+
     </div>
   );
 }
