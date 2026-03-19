@@ -72,12 +72,6 @@ function BFHASection({ address }: { address: string }) {
           </div>
         ))}
       </div>
-
-      {/* 注意書き */}
-      <p className="text-[11px] text-neutral-400 font-mono text-center pt-2 pb-6">
-        ブレヒロメンテナンス中は一部機能が利用できない場合があります。時間をおいて再アクセスしてください。
-      </p>
-
     </div>
   );
 }
@@ -234,7 +228,8 @@ export default function DashboardPage() {
 
       {/* 注意書き */}
       <p className="text-[11px] text-neutral-400 font-mono text-center pt-2 pb-6">
-        ブレヒロメンテナンス中は一部機能が利用できない場合があります。時間をおいて再アクセスしてください。
+        ブレヒロメンテナンス中は一部機能が利用できない場合があります。<br />
+        時間をおいて再アクセスしてください。
       </p>
 
     </div>
