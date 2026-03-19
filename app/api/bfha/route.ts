@@ -4,9 +4,14 @@ const OASYS_RPC     = 'https://rpc.mainnet.oasys.games';
 const BFHA_CONTRACT = '0x1C37B502c1F29CdEb4D242DF0316E4dA76551d06';
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
-// インメモリキャッシュ（5分）
+// インメモリキャッシュ（24時間）
 const cache = new Map<string, { data: BFHAResponse; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+const CDN_CACHE_HEADERS = {
+  'Vercel-CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+  'Cache-Control': 's-maxage=86400, stale-while-revalidate=604800',
+};
 
 interface NFTMeta {
   tokenId: number;
@@ -49,7 +54,7 @@ export async function GET(req: NextRequest) {
   const cacheKey = address.toLowerCase();
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return NextResponse.json(cached.data);
+    return NextResponse.json(cached.data, { headers: CDN_CACHE_HEADERS });
   }
 
   try {
@@ -61,7 +66,7 @@ export async function GET(req: NextRequest) {
     if (balance === 0) {
       const result: BFHAResponse = { balance: 0, nfts: [] };
       cache.set(cacheKey, { data: result, timestamp: Date.now() });
-      return NextResponse.json(result);
+      return NextResponse.json(result, { headers: CDN_CACHE_HEADERS });
     }
 
     // 2. eth_getLogs でトークンID取得
@@ -111,7 +116,7 @@ export async function GET(req: NextRequest) {
 
     const result: BFHAResponse = { balance, nfts };
     cache.set(cacheKey, { data: result, timestamp: Date.now() });
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: CDN_CACHE_HEADERS });
 
   } catch (err) {
     console.error('BFHA API error:', err);
