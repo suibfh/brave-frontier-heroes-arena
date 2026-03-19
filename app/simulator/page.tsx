@@ -987,7 +987,7 @@ export default function SimulatorPage() {
   };
 
   const replayUrl = battleResult?.battle_key
-    ? `https://bravefrontierheroes.com/ja/battle/${battleResult.battle_key}?returnUrl=https://brave-four-heroes-arena.vercel.app/simulator`
+    ? `https://bravefrontierheroes.com/ja/battle/${battleResult.battle_key}?returnUrl=https://brave-frontier-heroes-arena.vercel.app/simulator`
     : null;
 
   const allyCount  = allySlots.filter(Boolean).length;
