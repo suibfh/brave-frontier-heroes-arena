@@ -23,8 +23,8 @@ export interface Stage {
 export const STAGES: Stage[] = [
   {
     id: 1,
-    name: "挑発を使ってみよう",
-    description: "攻撃を吸い寄せて、アタッカーを守ろう",
+    name: "フルアクセステスト",
+    description: "制限なし",
     difficulty: 1,
     defender_uid: 100006912,
     defender_units: [
@@ -45,8 +45,8 @@ export const STAGES: Stage[] = [
   },
   {
     id: 2,
-    name: "フォーカスを合わせよう",
-    description: "攻撃対象を合わせて、敵を倒そう",
+    name: "1",
+    description: "制限1",
     difficulty: 1,
     defender_uid: 100006912,
     defender_units: [
@@ -85,8 +85,8 @@ export const STAGES: Stage[] = [
   },
   {
     id: 3,
-    name: "弱点を突いてみよう",
-    description: "弱点攻撃でダメージ1.3倍！軽減効果はないよ",
+    name: "5",
+    description: "制限5",
     difficulty: 1,
     defender_uid: 100006912,
     defender_units: [
@@ -125,8 +125,8 @@ export const STAGES: Stage[] = [
   },
   {
     id: 4,
-    name: "列攻撃を使おう",
-    description: "範囲攻撃でまとめて倒そう",
+    name: "制限1,5",
+    description: "制限1,5",
     difficulty: 3,
     defender_uid: 100006912,
     defender_units: [
@@ -204,4 +204,3 @@ export const STAGES: Stage[] = [
     allowedBfhaIds: null,
   },
 ];
-
