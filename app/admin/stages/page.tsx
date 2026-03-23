@@ -22,6 +22,7 @@ function newStage(id: number): Stage {
     difficulty: 3,
     defender_uid: 0,
     defender_units: [newUnit(1)],
+    allowedBfhaIds: null,
   };
 }
 
@@ -30,7 +31,8 @@ function generateCode(stages: Stage[]): string {
     const unitsStr = s.defender_units.map((u) =>
       `      {\n        hero_id: ${u.hero_id},\n        position: ${u.position},\n        extension_ids: [${u.extension_ids.join(', ')}],\n        skill_orders: [${u.skill_orders.join(', ')}],\n      }`
     ).join(',\n');
-    return `  {\n    id: ${s.id},\n    name: "${s.name}",\n    description: "${s.description}",\n    difficulty: ${s.difficulty},\n    defender_uid: ${s.defender_uid},\n    defender_units: [\n${unitsStr},\n    ],\n  }`;
+    const bfhaStr = s.allowedBfhaIds === null ? 'null' : `[${s.allowedBfhaIds.join(', ')}]`;
+    return `  {\n    id: ${s.id},\n    name: "${s.name}",\n    description: "${s.description}",\n    difficulty: ${s.difficulty},\n    defender_uid: ${s.defender_uid},\n    defender_units: [\n${unitsStr},\n    ],\n    allowedBfhaIds: ${bfhaStr},\n  }`;
   }).join(',\n');
   return `export const STAGES: Stage[] = [\n${stagesStr},\n];\n`;
 }
@@ -234,6 +236,33 @@ export default function AdminStagesPage() {
                     onChange={(v) => updateStage(stageIdx, { ...stage, defender_uid: Number(v) })}
                     placeholder="100006912" />
                 </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-black uppercase text-neutral-500 block mb-0.5">
+                  BFHA ID制限 <span className="font-normal normal-case text-neutral-400">（空欄=全員OK、カンマ区切りでID指定）</span>
+                </label>
+                <input
+                  type="text"
+                  value={stage.allowedBfhaIds === null ? '' : stage.allowedBfhaIds.join(', ')}
+                  onChange={(e) => {
+                    const raw = e.target.value.trim();
+                    if (raw === '') {
+                      updateStage(stageIdx, { ...stage, allowedBfhaIds: null });
+                    } else {
+                      const ids = raw.split(',').map(s => Number(s.trim())).filter(n => !isNaN(n) && n >= 0);
+                      updateStage(stageIdx, { ...stage, allowedBfhaIds: ids });
+                    }
+                  }}
+                  placeholder="0, 1, 5（空欄で全員アクセス可）"
+                  className="w-full border border-neutral-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-neutral-600 font-mono"
+                />
+                <p className="text-[10px] text-neutral-400 mt-0.5 font-mono">
+                  {stage.allowedBfhaIds === null
+                    ? '✓ 全員アクセス可'
+                    : stage.allowedBfhaIds.length === 0
+                      ? '⚠ 誰もアクセスできません（IDを入力してください）'
+                      : `✓ BFHA ID: ${stage.allowedBfhaIds.join(', ')} を持つ人のみ`}
+                </p>
               </div>
 
               {/* ディフェンダーユニット */}

@@ -13,18 +13,19 @@ import { useGetV1Me } from '@/src/api/generated/user/user';
 interface NFTMeta { tokenId: number; name: string; image: string; }
 interface BFHAData { balance: number; nfts: NFTMeta[]; }
 
-function BFHASection({ address }: { address: string }) {
-  const [data, setData]       = useState<BFHAData | null>(null);
-  const [loading, setLoading] = useState(true);
+function BFHASection({ address, externalData }: { address: string; externalData: BFHAData | null }) {
+  const [data, setData]       = useState<BFHAData | null>(externalData);
+  const [loading, setLoading] = useState(externalData === null);
 
   useEffect(() => {
+    if (externalData !== null) { setData(externalData); setLoading(false); return; }
     if (!address) return;
     fetch(`/api/bfha?address=${address}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setData(d); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [address]);
+  }, [address, externalData]);
 
   if (loading) {
     return (
@@ -78,6 +79,7 @@ function BFHASection({ address }: { address: string }) {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [bfhaData, setBfhaData] = useState<BFHAData | null>(null);
   if (!CLIENT_ID || (typeof window === 'undefined' && !CLIENT_SECRET)) {
     if (typeof window !== 'undefined') {
       window.location.href = '/env-warning';
@@ -96,6 +98,16 @@ export default function DashboardPage() {
       land_type: userDataRaw.user.land_type as number | undefined,
     }
   } : undefined;
+
+  useEffect(() => {
+    const address = userData?.user?.eth;
+    if (!address) return;
+    fetch(`/api/bfha?address=${address}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setBfhaData(d); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData?.user?.eth]);
 
   useEffect(() => {
     if (userError) {
@@ -185,7 +197,7 @@ export default function DashboardPage() {
               </div>
 
               {userData?.user?.eth && (
-                <BFHASection address={userData.user.eth as string} />
+                <BFHASection address={userData.user.eth as string} externalData={bfhaData} />
               )}
             </div>
           </CardContent>
@@ -208,7 +220,14 @@ export default function DashboardPage() {
             </CardHeader>
           </Card>
 
-          <Card className="cyber-card border-2 border-red-600 cursor-pointer hover:bg-red-50 transition-colors" onClick={() => router.push('/stages')}>
+          <Card
+            className={`cyber-card border-2 transition-colors ${
+              bfhaData && bfhaData.balance > 0
+                ? 'border-red-600 cursor-pointer hover:bg-red-50'
+                : 'border-neutral-200 cursor-default'
+            }`}
+            onClick={() => { if (bfhaData && bfhaData.balance > 0) router.push('/stages'); }}
+          >
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-neutral-900 font-bold flex items-center uppercase">
@@ -218,8 +237,11 @@ export default function DashboardPage() {
                 <CardDescription className="text-neutral-500 font-mono mt-1">
                   ステージを選んでバトルに挑戦！
                 </CardDescription>
+                {bfhaData !== null && bfhaData.balance === 0 && (
+                  <p className="text-xs font-bold text-red-500 mt-1">BFHA未所持のためアクセスできません</p>
+                )}
               </div>
-              <ExternalLink className="w-5 h-5 text-neutral-400" />
+              <ExternalLink className={`w-5 h-5 ${bfhaData && bfhaData.balance > 0 ? 'text-neutral-400' : 'text-neutral-200'}`} />
             </CardHeader>
           </Card>
         </div>

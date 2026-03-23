@@ -9,6 +9,7 @@ import { DifficultyStars } from '@/src/components/ui/difficulty-stars';
 import { STAGES } from '@/src/config/stages';
 import { getAllClearRecords, isAllCleared, resetAllRecords, type ClearRecord } from '@/src/lib/clearRecords';
 import { usePostV1Heroes } from '@/src/api/generated/hero/hero';
+import { useGetV1Me } from '@/src/api/generated/user/user';
 
 // ============================================================
 // ユニット画像URL変換（battle/page.tsx と同じロジック）
@@ -110,10 +111,26 @@ function ClearBadge({ record }: { record: ClearRecord | null }) {
 export default function StagesPage() {
   const router = useRouter();
   const [records, setRecords] = useState<Record<number, ClearRecord>>({});
-  const allStageIds = STAGES.map(s => s.id);
   const fetchedRef = useRef(false);
+  const [bfhaIds, setBfhaIds] = useState<number[] | null>(null); // null=未ロード
+  const [bfhaChecked, setBfhaChecked] = useState(false);
 
   useEffect(() => { setRecords(getAllClearRecords()); }, []);
+
+  const { data: meData } = useGetV1Me();
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const address = (meData?.user as any)?.eth;
+    if (!address) return;
+    fetch(`/api/bfha?address=${address}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) setBfhaIds((d.nfts ?? []).map((n: { tokenId: number }) => n.tokenId));
+      })
+      .catch(() => { setBfhaIds([]); })
+      .finally(() => setBfhaChecked(true));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(meData?.user as any)?.eth]);
 
   // 全ステージの敵ユニットIDをまとめてゲームデータ取得（属性のため）
   const { mutate: fetchHeroGameData } = usePostV1Heroes({
@@ -133,6 +150,13 @@ export default function StagesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // BFHAでアクセス可能なステージのみ表示
+  const visibleStages = STAGES.filter(stage => {
+    if (stage.allowedBfhaIds === null) return true; // 全員OK
+    if (!bfhaIds) return false; // 未ロード中は非表示
+    return stage.allowedBfhaIds.some(id => bfhaIds.includes(id));
+  });
+  const allStageIds = visibleStages.map(s => s.id);
   const clearedCount = allStageIds.filter(id => records[id]?.bestResult === 'WIN').length;
   const allCleared = isAllCleared(allStageIds);
   const totalAttempts = Object.values(records).reduce((s, r) => s + r.attempts, 0);
@@ -156,7 +180,7 @@ export default function StagesPage() {
               <Swords className="w-8 h-8 mr-2 text-neutral-600" />
               Stage Select
             </h1>
-            <p className="text-neutral-600 font-mono">挑戦するステージを選んでください</p>
+            <p className="text-neutral-600 font-mono">Discordで管理者にDMして設定可能です</p>
           </div>
           <div className="text-right hidden sm:block">
             <p className="text-2xl font-black text-neutral-900">{clearedCount}<span className="text-base font-mono text-neutral-400">/{allStageIds.length}</span></p>
@@ -176,9 +200,17 @@ export default function StagesPage() {
           </div>
         )}
 
+        {/* BFHAチェック中 or 未所持 */}
+        {!bfhaChecked && (
+          <div className="text-center text-neutral-400 font-mono text-sm py-8">BFHA確認中...</div>
+        )}
+        {bfhaChecked && bfhaIds !== null && bfhaIds.length === 0 && (
+          <div className="text-center text-red-500 font-bold text-sm py-8">BFHA未所持のためアクセスできません</div>
+        )}
+
         {/* Stage Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {STAGES.map((stage) => {
+          {visibleStages.map((stage) => {
             const record = records[stage.id] ?? null;
             const isWin = record?.bestResult === 'WIN';
             const sortedUnits = [...stage.defender_units].sort((a, b) => a.position - b.position);
