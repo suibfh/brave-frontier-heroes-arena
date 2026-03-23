@@ -23,20 +23,14 @@ export interface Stage {
 export const STAGES: Stage[] = [
   {
     id: 1,
-    name: "フルアクセステスト",
-    description: "制限なし",
+    name: "1 BFHA：1 STAGE",
+    description: "カスタムステージに挑戦できます。suiの手持ちのみ対応可能、作成後の設定変更不可。",
     difficulty: 1,
     defender_uid: 100006912,
     defender_units: [
       {
         hero_id: 20200228,
         position: 1,
-        extension_ids: [],
-        skill_orders: [1, 2, 0],
-      },
-      {
-        hero_id: 20400044,
-        position: 2,
         extension_ids: [],
         skill_orders: [1, 2, 0],
       },
@@ -45,126 +39,6 @@ export const STAGES: Stage[] = [
   },
   {
     id: 2,
-    name: "1",
-    description: "制限1",
-    difficulty: 1,
-    defender_uid: 100006912,
-    defender_units: [
-      {
-        hero_id: 20440350,
-        position: 1,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-      {
-        hero_id: 20340090,
-        position: 2,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-      {
-        hero_id: 20230004,
-        position: 3,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-      {
-        hero_id: 20200228,
-        position: 4,
-        extension_ids: [],
-        skill_orders: [1, 2, 0],
-      },
-      {
-        hero_id: 20400044,
-        position: 5,
-        extension_ids: [],
-        skill_orders: [1, 2, 0],
-      },
-    ],
-    allowedBfhaIds: [1],
-  },
-  {
-    id: 3,
-    name: "5",
-    description: "制限5",
-    difficulty: 1,
-    defender_uid: 100006912,
-    defender_units: [
-      {
-        hero_id: 20120143,
-        position: 1,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-      {
-        hero_id: 20150088,
-        position: 2,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-      {
-        hero_id: 20180055,
-        position: 3,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-      {
-        hero_id: 20250030,
-        position: 4,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-      {
-        hero_id: 20260039,
-        position: 5,
-        extension_ids: [],
-        skill_orders: [0, 1, 2],
-      },
-    ],
-    allowedBfhaIds: [5],
-  },
-  {
-    id: 4,
-    name: "制限1,5",
-    description: "制限1,5",
-    difficulty: 3,
-    defender_uid: 100006912,
-    defender_units: [
-      {
-        hero_id: 20200228,
-        position: 1,
-        extension_ids: [10761157],
-        skill_orders: [1, 2, 0],
-      },
-      {
-        hero_id: 20390852,
-        position: 2,
-        extension_ids: [10821496],
-        skill_orders: [1, 2, 0],
-      },
-      {
-        hero_id: 20390852,
-        position: 3,
-        extension_ids: [10821496],
-        skill_orders: [1, 2, 0],
-      },
-      {
-        hero_id: 20390852,
-        position: 4,
-        extension_ids: [10762414],
-        skill_orders: [1, 2, 0],
-      },
-      {
-        hero_id: 20390852,
-        position: 5,
-        extension_ids: [10761427],
-        skill_orders: [1, 2, 0],
-      },
-    ],
-    allowedBfhaIds: [1, 5],
-  },
-  {
-    id: 5,
     name: "バトルは最大200アクション",
     description: "遅く倒せ",
     difficulty: 5,
@@ -204,9 +78,9 @@ export const STAGES: Stage[] = [
     allowedBfhaIds: null,
   },
   {
-    id: 6,
-    name: "Stage 6",
-    description: "5制限",
+    id: 3,
+    name: "Stage 3",
+    description: "テスト1",
     difficulty: 3,
     defender_uid: 100006912,
     defender_units: [
@@ -217,22 +91,6 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
-    allowedBfhaIds: [5],
-  },
-  {
-    id: 7,
-    name: "Stage 7",
-    description: "1,5制限",
-    difficulty: 3,
-    defender_uid: 100006912,
-    defender_units: [
-      {
-        hero_id: 51250011,
-        position: 1,
-        extension_ids: [],
-        skill_orders: [1, 2, 0],
-      },
-    ],
-    allowedBfhaIds: [1, 5],
+    allowedBfhaIds: [1],
   },
 ];
