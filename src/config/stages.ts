@@ -81,7 +81,7 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
-    allowedBfhaIds: null,
+    allowedBfhaIds: [1],
   },
   {
     id: 3,
@@ -121,7 +121,7 @@ export const STAGES: Stage[] = [
         skill_orders: [0, 1, 2],
       },
     ],
-    allowedBfhaIds: null,
+    allowedBfhaIds: [5],
   },
   {
     id: 4,
@@ -161,7 +161,7 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
-    allowedBfhaIds: null,
+    allowedBfhaIds: [1, 5],
   },
   {
     id: 5,
