@@ -23,8 +23,8 @@ export interface Stage {
 export const STAGES: Stage[] = [
   {
     id: 1,
-    name: "1 BFHA：1 STAGE",
-    description: "カスタムステージに挑戦できます。suiの手持ちのみ対応可能、作成後の設定変更不可。",
+    name: "1 BFHA:1 STAGE",
+    description: "sui手持ちを使用したカスタムステージに挑戦可能。作成後の設定変更受付不可。",
     difficulty: 1,
     defender_uid: 100006912,
     defender_units: [
