@@ -9,8 +9,8 @@ const cache = new Map<string, { data: BFHAResponse; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 const CDN_CACHE_HEADERS = {
-  'Vercel-CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
-  'Cache-Control': 's-maxage=86400, stale-while-revalidate=604800',
+  'Vercel-CDN-Cache-Control': 'public, max-age=604800, stale-while-revalidate=2592000',
+  'Cache-Control': 's-maxage=604800, stale-while-revalidate=2592000',
 };
 
 interface NFTMeta {

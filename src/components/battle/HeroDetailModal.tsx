@@ -76,7 +76,7 @@ export function HeroDetailModal({ heroId, gameData, onClose }: HeroDetailModalPr
             <div className="p-4 space-y-3 overflow-y-auto">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-black text-sm uppercase leading-tight">{meta.attributes.type_name}</p>
+                  <p className="font-black text-sm uppercase leading-tight">{gameData?.name_jp || gameData?.name || meta.attributes.type_name}</p>
                   <p className="text-xs text-neutral-400 font-mono">Lv {meta.attributes.lv}</p>
                 </div>
                 <span className="text-[10px] font-mono text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded flex-shrink-0">

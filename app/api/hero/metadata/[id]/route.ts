@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // インメモリキャッシュ（同一実行環境が再利用された場合の補助）
 const metadataCache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL = 3600 * 1000; // 1時間
+const CACHE_TTL = 604800000; // 7日間
 
 // NFTメタデータは基本不変のため、CDN側に24時間キャッシュさせる
 // Vercel-CDN-Cache-Control: Vercel CDN エッジ向け
 // Cache-Control s-maxage: 他のCDN・プロキシ向け
 // stale-while-revalidate: キャッシュ期限切れ後も古い値を返しつつバックグラウンドで更新
 const CDN_CACHE_HEADERS = {
-  'Vercel-CDN-Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
-  'Cache-Control': 's-maxage=86400, stale-while-revalidate=604800',
+  'Vercel-CDN-Cache-Control': 'public, max-age=604800, stale-while-revalidate=2592000',
+  'Cache-Control': 's-maxage=604800, stale-while-revalidate=2592000',
 };
 
 export async function GET(
