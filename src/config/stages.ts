@@ -17,6 +17,7 @@ export interface Stage {
   difficulty: number;        // 1〜5（星の数）
   defender_uid: number;
   defender_units: DefenderUnit[];
+  allowedBfhaIds: number[] | null; // null=全員OK, [0,1,5]=指定IDのみ
 }
 
 export const STAGES: Stage[] = [
@@ -40,6 +41,7 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
+    allowedBfhaIds: null,
   },
   {
     id: 2,
@@ -79,6 +81,7 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
+    allowedBfhaIds: null,
   },
   {
     id: 3,
@@ -118,6 +121,7 @@ export const STAGES: Stage[] = [
         skill_orders: [0, 1, 2],
       },
     ],
+    allowedBfhaIds: null,
   },
   {
     id: 4,
@@ -157,6 +161,7 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
+    allowedBfhaIds: null,
   },
   {
     id: 5,
@@ -196,6 +201,7 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
+    allowedBfhaIds: null,
   },
 ];
 
