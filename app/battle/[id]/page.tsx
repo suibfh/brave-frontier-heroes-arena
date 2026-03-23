@@ -66,6 +66,9 @@ export default function BattlePage() {
   const stageId = Number(params.id);
   const stage = STAGES.find(s => s.id === stageId);
 
+  // ---- BFHA アクセスチェック ----
+  const [bfhaChecked, setBfhaChecked] = useState(false);
+
   // ---- API フック ----
   const { data: meData } = useGetV1Me();
   const { data: unitListData, isLoading: isLoadingUnits } = useGetV1MeUnits();
@@ -102,6 +105,28 @@ export default function BattlePage() {
 
   const heroFetchedRef   = useRef(false);
   const sphereFetchedRef = useRef(false);
+
+  // ---- BFHA アクセスチェック ----
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const address = (meData?.user as any)?.eth;
+    if (!address) return;
+    fetch(`/api/bfha?address=${address}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const ownedIds: number[] = (d?.nfts ?? []).map((n: { tokenId: number }) => n.tokenId);
+        // BFHA未所持 → /stages にリダイレクト
+        if (!d || d.balance === 0) { router.replace('/stages'); return; }
+        // ステージのID制限チェック
+        if (stage?.allowedBfhaIds !== null && stage?.allowedBfhaIds !== undefined) {
+          const allowed = stage.allowedBfhaIds.some(id => ownedIds.includes(id));
+          if (!allowed) { router.replace('/stages'); return; }
+        }
+        setBfhaChecked(true);
+      })
+      .catch(() => { router.replace('/stages'); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(meData?.user as any)?.eth]);
 
   useEffect(() => {
     const units = unitListData?.units ?? [];
@@ -212,7 +237,7 @@ export default function BattlePage() {
   const filteredUnits = (unitListData?.units ?? []).filter(id => {
     if (unitSearch) {
       const q = unitSearch.toLowerCase();
-      const n = (unitMetaSnap[id]?.attributes?.type_name ?? heroGameMap[id]?.name ?? '').toLowerCase();
+      const n = (heroGameMap[id]?.name_jp ?? heroGameMap[id]?.name ?? unitMetaSnap[id]?.attributes?.type_name ?? '').toLowerCase();
       const bb = (unitMetaSnap[id]?.attributes?.brave_burst ?? '').toLowerCase();
       if (!n.includes(q) && !bb.includes(q) && !id.includes(q)) return false;
     }
@@ -278,6 +303,14 @@ export default function BattlePage() {
           <p className="text-red-500 font-bold text-xl mb-4">ステージが見つかりません</p>
           <Button onClick={() => router.push('/stages')}>ステージ選択に戻る</Button>
         </div>
+      </div>
+    );
+  }
+
+  if (!bfhaChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-neutral-400 font-mono text-sm animate-pulse">確認中...</p>
       </div>
     );
   }
