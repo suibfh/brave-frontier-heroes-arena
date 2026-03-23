@@ -168,7 +168,7 @@ export const STAGES: Stage[] = [
     name: "バトルは最大200アクション",
     description: "遅く倒せ",
     difficulty: 5,
-    defender_uid: 100006912,
+    defender_uid: 100006911,
     defender_units: [
       {
         hero_id: 51980007,
@@ -202,5 +202,37 @@ export const STAGES: Stage[] = [
       },
     ],
     allowedBfhaIds: null,
+  },
+  {
+    id: 6,
+    name: "Stage 6",
+    description: "5制限",
+    difficulty: 3,
+    defender_uid: 100006912,
+    defender_units: [
+      {
+        hero_id: 51250011,
+        position: 1,
+        extension_ids: [],
+        skill_orders: [1, 2, 0],
+      },
+    ],
+    allowedBfhaIds: [5],
+  },
+  {
+    id: 7,
+    name: "Stage 7",
+    description: "1,5制限",
+    difficulty: 3,
+    defender_uid: 100006912,
+    defender_units: [
+      {
+        hero_id: 51250011,
+        position: 1,
+        extension_ids: [],
+        skill_orders: [1, 2, 0],
+      },
+    ],
+    allowedBfhaIds: [1, 5],
   },
 ];
