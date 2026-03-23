@@ -250,8 +250,8 @@ export default function DashboardPage() {
 
       {/* 注意書き */}
       <p className="text-[11px] text-neutral-400 font-mono text-center pt-2 pb-6">
-        ブレヒロメンテナンス中は一部機能が利用できない場合があります。<br />
-        時間をおいて再アクセスしてください。
+        ブレヒロメンテナンス中は一部機能が利用できません。メンテナンス完了後に再アクセスしてください。<br />
+        サービス維持費が許容範囲を超えた場合、Brush Field Home Atelier (BFHA) の所持状況に応じてアクセス制限を実施する場合があります。
       </p>
 
     </div>
