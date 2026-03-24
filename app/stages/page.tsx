@@ -178,9 +178,9 @@ export default function StagesPage() {
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-neutral-900 uppercase tracking-tight flex items-center">
               <Swords className="w-8 h-8 mr-2 text-neutral-600" />
-              Stage Select
+              バトルアリーナ
             </h1>
-            <p className="text-neutral-600 font-mono">Discordで管理者にDMして設定可能です</p>
+            <p className="text-neutral-600 font-mono">ステージを選んでバトルに挑戦！</p>
           </div>
           <div className="text-right hidden sm:block">
             <p className="text-2xl font-black text-neutral-900">{clearedCount}<span className="text-base font-mono text-neutral-400">/{allStageIds.length}</span></p>

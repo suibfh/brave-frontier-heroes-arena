@@ -238,7 +238,7 @@ export default function DashboardPage() {
                   ステージを選んでバトルに挑戦！
                 </CardDescription>
                 {bfhaData !== null && bfhaData.balance === 0 && (
-                  <p className="text-xs font-bold text-red-500 mt-1">BFHA未所持のためアクセスできません</p>
+                  <p className="text-xs font-bold text-neutral-400 mt-1">BFHA未所持のためアクセスできません</p>
                 )}
               </div>
               <ExternalLink className={`w-5 h-5 ${bfhaData && bfhaData.balance > 0 ? 'text-neutral-400' : 'text-neutral-200'}`} />

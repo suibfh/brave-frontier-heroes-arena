@@ -24,7 +24,7 @@ export const STAGES: Stage[] = [
   {
     id: 1,
     name: "1 BFHA : 1 STAGE",
-    description: "【未実装】sui手持ちを使用したカスタムステージに挑戦可能。作成後の設定変更受付不可。",
+    description: "【未実装】suiの手持ちと特訓。作成後の設定変更受付不可。",
     difficulty: 1,
     defender_uid: 100006912,
     defender_units: [
