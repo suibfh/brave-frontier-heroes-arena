@@ -23,8 +23,8 @@ export interface Stage {
 export const STAGES: Stage[] = [
   {
     id: 1,
-    name: "1 BFHA : 1 STAGE",
-    description: "【未実装】suiの手持ちと特訓。作成後の設定変更受付不可。",
+    name: "STAGE 1",
+    description: "【未実装】特訓機能",
     difficulty: 1,
     defender_uid: 100006912,
     defender_units: [
@@ -79,8 +79,8 @@ export const STAGES: Stage[] = [
   },
   {
     id: 3,
-    name: "Stage 3",
-    description: "テスト1",
+    name: "Stage for piyochan",
+    description: "ぴよちゃん専用",
     difficulty: 3,
     defender_uid: 100006912,
     defender_units: [
@@ -91,6 +91,6 @@ export const STAGES: Stage[] = [
         skill_orders: [1, 2, 0],
       },
     ],
-    allowedBfhaIds: [1],
+    allowedBfhaIds: [1, 4],
   },
 ];
